@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  postgres:
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/pg_password
+    secrets:
+      - pg_password
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+    restart: always
+
+  backend:
+    build:
+      target: production
+    environment:
+      LOG_LEVEL: WARNING
+      DATABASE_URL: postgresql://app:@postgres:5432/appdb
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+    restart: always
+    # No published ports: only the frontend/nginx reverse proxy talks to backend.
+
+  frontend:
+    build:
+      target: production
+    ports:
+      - "443:80"
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    restart: always
+
+secrets:
+  pg_password:
+    file: ./secrets/pg_password.txt

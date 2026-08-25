@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      target: development
+    environment:
+      LOG_LEVEL: DEBUG
+      FLASK_DEBUG: "1"
+    volumes:
+      - ./backend:/app
+    ports:
+      - "5000:5000"
+
+  frontend:
+    build:
+      target: development
+    environment:
+      VITE_API_BASE: /api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+
+  postgres:
+    ports:
+      - "5432:5432"
