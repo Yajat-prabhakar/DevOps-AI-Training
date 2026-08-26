@@ -44,14 +44,14 @@ jobs:
         if: github.event.inputs.service == 'backend-service' || github.event.inputs.service == 'all'
         run: |
           CLUSTER="${{ github.event.inputs.environment == 'production' && env.ECS_CLUSTER_PRODUCTION || env.ECS_CLUSTER_STAGING }}"
-          
+
           # Get current active task definition (excluding the one being deployed)
           PREV_TASK_DEF=$(aws ecs describe-services \
             --cluster $CLUSTER \
             --services backend-service \
             --query 'services[0].deployments[?status==`ACTIVE`].taskDefinition | [1]' \
             --output text)
-          
+
           if [ "$PREV_TASK_DEF" == "None" ] || [ -z "$PREV_TASK_DEF" ]; then
             echo "No previous task definition found. Getting the one before current..."
             PREV_TASK_DEF=$(aws ecs describe-services \
@@ -60,9 +60,9 @@ jobs:
               --query 'services[0].deployments[?status==`ACTIVE`].taskDefinition | [0]' \
               --output text)
           fi
-          
+
           echo "Rolling back backend-service to: $PREV_TASK_DEF"
-          
+
           aws ecs update-service \
             --cluster $CLUSTER \
             --service backend-service \
@@ -73,13 +73,13 @@ jobs:
         if: github.event.inputs.service == 'frontend-service' || github.event.inputs.service == 'all'
         run: |
           CLUSTER="${{ github.event.inputs.environment == 'production' && env.ECS_CLUSTER_PRODUCTION || env.ECS_CLUSTER_STAGING }}"
-          
+
           PREV_TASK_DEF=$(aws ecs describe-services \
             --cluster $CLUSTER \
             --services frontend-service \
             --query 'services[0].deployments[?status==`ACTIVE`].taskDefinition | [1]' \
             --output text)
-          
+
           if [ "$PREV_TASK_DEF" == "None" ] || [ -z "$PREV_TASK_DEF" ]; then
             echo "No previous task definition found. Getting the one before current..."
             PREV_TASK_DEF=$(aws ecs describe-services \
@@ -88,9 +88,9 @@ jobs:
               --query 'services[0].deployments[?status==`ACTIVE`].taskDefinition | [0]' \
               --output text)
           fi
-          
+
           echo "Rolling back frontend-service to: $PREV_TASK_DEF"
-          
+
           aws ecs update-service \
             --cluster $CLUSTER \
             --service frontend-service \
@@ -101,7 +101,7 @@ jobs:
         run: |
           CLUSTER="${{ github.event.inputs.environment == 'production' && env.ECS_CLUSTER_PRODUCTION || env.ECS_CLUSTER_STAGING }}"
           SERVICES="${{ github.event.inputs.service == 'all' && 'backend-service frontend-service' || github.event.inputs.service }}"
-          
+
           aws ecs wait services-stable \
             --cluster $CLUSTER \
             --services $SERVICES

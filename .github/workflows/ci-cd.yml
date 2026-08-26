@@ -140,6 +140,7 @@ jobs:
         run: |
           cd ${{ env.FRONTEND_PATH }}
           npm install
+          npm install --save-dev @types/react @types/react-dom
 
       - name: Run type check (build)
         run: |
