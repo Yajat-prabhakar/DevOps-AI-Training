@@ -1,0 +1,131 @@
+2026-08-26 10:00:01.123 UTC [1] LOG:  starting PostgreSQL 16.4 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 12.3.1, 64-bit
+2026-08-26 10:00:01.125 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2026-08-26 10:00:01.126 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-08-26 10:00:01.134 UTC [28] LOG:  database system was shut down at 2026-08-26 10:00:00 UTC
+2026-08-26 10:00:01.142 UTC [1] LOG:  database system is ready to accept connections
+2026-08-26 10:00:15.234 UTC [45] LOG:  connection received: host=172.18.0.3 port=49832
+2026-08-26 10:00:15.236 UTC [45] LOG:  connection authorized: user=app database=appdb
+2026-08-26 10:00:15.238 UTC [45] LOG:  statement: SELECT 1
+2026-08-26 10:01:00.456 UTC [46] LOG:  connection received: host=172.18.0.3 port=49833
+2026-08-26 10:01:00.458 UTC [46] LOG:  connection authorized: user=app database=appdb
+2026-08-26 10:01:00.460 UTC [46] LOG:  statement: SELECT id, name, email FROM users WHERE active = true
+2026-08-26 10:01:00.465 UTC [46] LOG:  duration: 5.123 ms  statement: SELECT id, name, email FROM users WHERE active = true
+2026-08-26 10:02:30.789 UTC [47] LOG:  connection received: host=172.18.0.3 port=49834
+2026-08-26 10:02:30.791 UTC [47] LOG:  connection authorized: user=app database=appdb
+2026-08-26 10:02:30.793 UTC [47] LOG:  statement: INSERT INTO audit_log (action, user_id, timestamp) VALUES ('login', 1234, NOW())
+2026-08-26 10:02:30.798 UTC [47] LOG:  duration: 5.456 ms  statement: INSERT INTO audit_log (action, user_id, timestamp) VALUES ('login', 1234, NOW())
+2026-08-26 10:03:00.001 UTC [48] LOG:  connection received: host=172.18.0.3 port=49835
+2026-08-26 10:03:00.003 UTC [48] LOG:  connection authorized: user=app database=appdb
+2026-08-26 10:03:00.005 UTC [48] LOG:  statement: SELECT id, name, email FROM users WHERE active = true
+2026-08-26 10:03:00.010 UTC [48] LOG:  duration: 5.234 ms  statement: SELECT id, name, email FROM users WHERE active = true
+2026-08-26 10:04:00.001 UTC [49] LOG:  connection received: host=172.18.0.3 port=49836
+2026-08-26 10:04:00.003 UTC [49] LOG:  connection authorized: user=app database=appdb
+2026-08-26 10:04:00.005 UTC [49] LOG:  statement: SELECT id, name, email FROM users WHERE active = true
+2026-08-26 10:04:00.010 UTC [49] LOG:  duration: 5.123 ms  statement: SELECT id, name, email FROM users WHERE active = true
+2026-08-26 10:05:00.001 UTC [50] LOG:  connection received: host=172.18.0.3 port=49837
+2026-08-26 10:05:00.003 UTC [50] LOG:  connection authorized: user=app database=appdb
+2026-08-26 10:05:00.005 UTC [50] LOG:  statement: SELECT id, name, email FROM users WHERE active = true
+2026-08-26 10:05:00.010 UTC [50] LOG:  duration: 5.345 ms  statement: SELECT id, name, email FROM users WHERE active = true
+2026-08-26 10:06:00.001 UTC [51] LOG:  connection received: host=172.18.0.3 port=49838
+2026-08-26 10:06:00.003 UTC [51] LOG:  connection authorized: user=app database=appdb
+2026-08-26 10:06:00.005 UTC [51] LOG:  statement: SELECT id, name, email FROM users WHERE active = true
+2026-08-26 10:06:00.010 UTC [51] LOG:  duration: 5.234 ms  statement: SELECT id, name, email FROM users WHERE active = true
+2026-08-26 10:07:00.001 UTC [52] LOG:  connection received: host=172.18.0.3 port=49839
+2026-08-26 10:07:00.003 UTC [52] LOG:  connection authorized: user=app database=appdb
+2026-08-26 10:07:00.005 UTC [52] LOG:  statement: SELECT id, name, email FROM users WHERE active = true
+2026-08-26 10:07:00.010 UTC [52] LOG:  duration: 5.123 ms  statement: SELECT id, name, email FROM users WHERE active = true
+2026-08-26 10:07:30.000 UTC [53] LOG:  connection received: host=172.18.0.3 port=49840
+2026-08-26 10:07:30.002 UTC [53] LOG:  connection authorized: user=app database=appdb
+2026-08-26 10:07:30.004 UTC [53] LOG:  statement: BEGIN TRANSACTION
+2026-08-26 10:07:30.005 UTC [53] LOG:  statement: SELECT * FROM orders WHERE status = 'pending' FOR UPDATE
+2026-08-26 10:07:35.123 UTC [53] LOG:  duration: 5118.234 ms  statement: SELECT * FROM orders WHERE status = 'pending' FOR UPDATE
+2026-08-26 10:07:35.125 UTC [53] LOG:  statement: UPDATE orders SET status = 'processing' WHERE id IN (1, 2, 3, 4, 5)
+2026-08-26 10:07:35.130 UTC [53] LOG:  duration: 5.123 ms  statement: UPDATE orders SET status = 'processing' WHERE id IN (1, 2, 3, 4, 5)
+2026-08-26 10:07:35.131 UTC [53] LOG:  statement: COMMIT
+2026-08-26 10:08:00.001 UTC [54] LOG:  connection received: host=172.18.0.3 port=49841
+2026-08-26 10:08:00.003 UTC [54] LOG:  connection authorized: user=app database=appdb
+2026-08-26 10:08:00.005 UTC [54] LOG:  statement: SELECT id, name, email FROM users WHERE active = true
+2026-08-26 10:08:00.010 UTC [54] LOG:  duration: 5.234 ms  statement: SELECT id, name, email FROM users WHERE active = true
+2026-08-26 10:08:15.000 UTC [55] LOG:  connection received: host=172.18.0.3 port=49842
+2026-08-26 10:08:15.002 UTC [55] LOG:  connection authorized: user=app database=appdb
+2026-08-26 10:08:15.004 UTC [55] LOG:  statement: BEGIN TRANSACTION
+2026-08-26 10:08:15.005 UTC [55] LOG:  statement: SELECT * FROM orders WHERE status = 'pending' FOR UPDATE
+2026-08-26 10:08:20.123 UTC [55] LOG:  duration: 5118.234 ms  statement: SELECT * FROM orders WHERE status = 'pending' FOR UPDATE
+2026-08-26 10:08:20.125 UTC [55] LOG:  statement: UPDATE orders SET status = 'processing' WHERE id IN (6, 7, 8, 9, 10)
+2026-08-26 10:08:20.130 UTC [55] LOG:  duration: 5.123 ms  statement: UPDATE orders SET status = 'processing' WHERE id IN (6, 7, 8, 9, 10)
+2026-08-26 10:08:20.131 UTC [55] LOG:  statement: COMMIT
+2026-08-26 10:08:30.000 UTC [56] LOG:  connection received: host=172.18.0.3 port=49843
+2026-08-26 10:08:30.002 UTC [56] LOG:  connection authorized: user=app database=appdb
+2026-08-26 10:08:30.004 UTC [56] LOG:  statement: BEGIN TRANSACTION
+2026-08-26 10:08:30.005 UTC [56] LOG:  statement: SELECT * FROM orders WHERE status = 'pending' FOR UPDATE
+2026-08-26 10:08:35.123 UTC [56] LOG:  duration: 5118.234 ms  statement: SELECT * FROM orders WHERE status = 'pending' FOR UPDATE
+2026-08-26 10:08:35.125 UTC [56] LOG:  statement: UPDATE orders SET status = 'processing' WHERE id IN (11, 12, 13, 14, 15)
+2026-08-26 10:08:35.130 UTC [56] LOG:  duration: 5.123 ms  statement: UPDATE orders SET status = 'processing' WHERE id IN (11, 12, 13, 14, 15)
+2026-08-26 10:08:35.131 UTC [56] LOG:  statement: COMMIT
+2026-08-26 10:08:45.000 UTC [57] LOG:  connection received: host=172.18.0.3 port=49844
+2026-08-26 10:08:45.002 UTC [57] LOG:  connection authorized: user=app database=appdb
+2026-08-26 10:08:45.004 UTC [57] LOG:  statement: BEGIN TRANSACTION
+2026-08-26 10:08:45.005 UTC [57] LOG:  statement: SELECT * FROM orders WHERE status = 'pending' FOR UPDATE
+2026-08-26 10:08:50.123 UTC [57] LOG:  duration: 5118.234 ms  statement: SELECT * FROM orders WHERE status = 'pending' FOR UPDATE
+2026-08-26 10:08:50.125 UTC [57] LOG:  statement: UPDATE orders SET status = 'processing' WHERE id IN (16, 17, 18, 19, 20)
+2026-08-26 10:08:50.130 UTC [57] LOG:  duration: 5.123 ms  statement: UPDATE orders SET status = 'processing' WHERE id IN (16, 17, 18, 19, 20)
+2026-08-26 10:08:50.131 UTC [57] LOG:  statement: COMMIT
+2026-08-26 10:09:00.000 UTC [58] LOG:  connection received: host=172.18.0.3 port=49845
+2026-08-26 10:09:00.002 UTC [58] FATAL:  too many connections for role "app"
+2026-08-26 10:09:00.003 UTC [59] FATAL:  too many connections for role "app"
+2026-08-26 10:09:00.004 UTC [60] FATAL:  too many connections for role "app"
+2026-08-26 10:09:01.000 UTC [61] FATAL:  too many connections for role "app"
+2026-08-26 10:09:01.001 UTC [62] FATAL:  too many connections for role "app"
+2026-08-26 10:09:02.000 UTC [63] FATAL:  too many connections for role "app"
+2026-08-26 10:09:02.001 UTC [64] FATAL:  too many connections for role "app"
+2026-08-26 10:09:03.000 UTC [65] FATAL:  too many connections for role "app"
+2026-08-26 10:09:03.001 UTC [66] FATAL:  too many connections for role "app"
+2026-08-26 10:09:04.000 UTC [67] FATAL:  too many connections for role "app"
+2026-08-26 10:09:10.000 UTC [68] LOG:  connection received: host=172.18.0.3 port=49846
+2026-08-26 10:09:10.002 UTC [68] FATAL:  too many connections for role "app"
+2026-08-26 10:09:15.000 UTC [69] FATAL:  too many connections for role "app"
+2026-08-26 10:09:20.000 UTC [70] FATAL:  too many connections for role "app"
+2026-08-26 10:09:25.000 UTC [71] FATAL:  too many connections for role "app"
+2026-08-26 10:09:30.000 UTC [72] FATAL:  too many connections for role "app"
+2026-08-26 10:09:35.000 UTC [73] FATAL:  too many connections for role "app"
+2026-08-26 10:09:40.000 UTC [74] FATAL:  too many connections for role "app"
+2026-08-26 10:09:45.000 UTC [75] FATAL:  too many connections for role "app"
+2026-08-26 10:09:50.000 UTC [76] FATAL:  too many connections for role "app"
+2026-08-26 10:09:55.000 UTC [77] FATAL:  too many connections for role "app"
+2026-08-26 10:10:00.000 UTC [78] FATAL:  too many connections for role "app"
+2026-08-26 10:10:05.000 UTC [79] FATAL:  too many connections for role "app"
+2026-08-26 10:10:10.000 UTC [80] FATAL:  too many connections for role "app"
+2026-08-26 10:10:15.000 UTC [81] FATAL:  too many connections for role "app"
+2026-08-26 10:10:20.000 UTC [82] FATAL:  too many connections for role "app"
+2026-08-26 10:10:25.000 UTC [83] FATAL:  too many connections for role "app"
+2026-08-26 10:10:30.000 UTC [84] FATAL:  too many connections for role "app"
+2026-08-26 10:10:35.000 UTC [85] FATAL:  too many connections for role "app"
+2026-08-26 10:10:40.000 UTC [86] FATAL:  too many connections for role "app"
+2026-08-26 10:10:45.000 UTC [87] FATAL:  too many connections for role "app"
+2026-08-26 10:10:50.000 UTC [88] FATAL:  too many connections for role "app"
+2026-08-26 10:10:55.000 UTC [89] FATAL:  too many connections for role "app"
+2026-08-26 10:11:00.000 UTC [90] FATAL:  too many connections for role "app"
+2026-08-26 10:11:05.000 UTC [91] FATAL:  too many connections for role "app"
+2026-08-26 10:11:10.000 UTC [92] FATAL:  too many connections for role "app"
+2026-08-26 10:11:15.000 UTC [93] FATAL:  too many connections for role "app"
+2026-08-26 10:11:20.000 UTC [94] FATAL:  too many connections for role "app"
+2026-08-26 10:11:25.000 UTC [95] FATAL:  too many connections for role "app"
+2026-08-26 10:11:30.000 UTC [96] FATAL:  too many connections for role "app"
+2026-08-26 10:11:35.000 UTC [97] FATAL:  too many connections for role "app"
+2026-08-26 10:11:40.000 UTC [98] FATAL:  too many connections for role "app"
+2026-08-26 10:11:45.000 UTC [99] FATAL:  too many connections for role "app"
+2026-08-26 10:11:50.000 UTC [100] FATAL:  too many connections for role "app"
+2026-08-26 10:12:00.000 UTC [45] LOG:  disconnection: session time: 0:11:44.877 user=app database=appdb host=172.18.0.3 port=49832
+2026-08-26 10:12:00.001 UTC [46] LOG:  disconnection: session time: 0:10:59.545 user=app database=appdb host=172.18.0.3 port=49833
+2026-08-26 10:12:00.002 UTC [47] LOG:  disconnection: session time: 0:09:29.203 user=app database=appdb host=172.18.0.3 port=49834
+2026-08-26 10:12:00.003 UTC [48] LOG:  disconnection: session time: 0:09:00.000 user=app database=appdb host=172.18.0.3 port=49835
+2026-08-26 10:12:00.004 UTC [49] LOG:  disconnection: session time: 0:08:00.000 user=app database=appdb host=172.18.0.3 port=49836
+2026-08-26 10:12:00.005 UTC [50] LOG:  disconnection: session time: 0:07:00.000 user=app database=appdb host=172.18.0.3 port=49837
+2026-08-26 10:12:00.006 UTC [51] LOG:  disconnection: session time: 0:06:00.000 user=app database=appdb host=172.18.0.3 port=49838
+2026-08-26 10:12:00.007 UTC [52] LOG:  disconnection: session time: 0:05:00.000 user=app database=appdb host=172.18.0.3 port=49839
+2026-08-26 10:12:00.008 UTC [53] LOG:  disconnection: session time: 0:04:30.000 user=app database=appdb host=172.18.0.3 port=49840
+2026-08-26 10:12:00.009 UTC [54] LOG:  disconnection: session time: 0:04:00.000 user=app database=appdb host=172.18.0.3 port=49841
+2026-08-26 10:12:00.010 UTC [55] LOG:  disconnection: session time: 0:03:40.000 user=app database=appdb host=172.18.0.3 port=49842
+2026-08-26 10:12:00.011 UTC [56] LOG:  disconnection: session time: 0:03:30.000 user=app database=appdb host=172.18.0.3 port=49843
+2026-08-26 10:12:00.012 UTC [57] LOG:  disconnection: session time: 0:03:15.000 user=app database=appdb host=172.18.0.3 port=49844
+2026-08-26 10:12:00.013 UTC [58] LOG:  disconnection: session time: 0:03:00.000 user=app database=appdb host=172.18.0.3 port=49845

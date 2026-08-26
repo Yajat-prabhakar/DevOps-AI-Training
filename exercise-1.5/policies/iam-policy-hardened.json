@@ -1,0 +1,166 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "S3ScopedAccess",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": "arn:aws:s3:::app-production-data/*",
+      "Condition": {
+        "StringEquals": {
+          "s3:ExistingObjectTag/Environment": "production"
+        }
+      }
+    },
+    {
+      "Sid": "S3BucketListAccess",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket"
+      ],
+      "Resource": "arn:aws:s3:::app-production-data",
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": [
+            "uploads/",
+            "backups/"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "EC2ScopedAccess",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:RunInstances"
+      ],
+      "Resource": [
+        "arn:aws:ec2:us-east-1:ACCOUNT:instance/*",
+        "arn:aws:ec2:us-east-1:ACCOUNT:network-interface/*",
+        "arn:aws:ec2:us-east-1:ACCOUNT:subnet/*",
+        "arn:aws:ec2:us-east-1:ACCOUNT:security-group/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "ec2:InstanceType": [
+            "t3.micro",
+            "t3.small",
+            "t3.medium"
+          ],
+          "ec2:Region": "us-east-1"
+        },
+        "Bool": {
+          "ec2:ResourceTag/Environment": "production"
+        }
+      }
+    },
+    {
+      "Sid": "EC2TerminateRestriction",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:TerminateInstances",
+        "ec2:StopInstances"
+      ],
+      "Resource": "arn:aws:ec2:us-east-1:ACCOUNT:instance/*",
+      "Condition": {
+        "Bool": {
+          "ec2:ResourceTag/Environment": "staging"
+        }
+      }
+    },
+    {
+      "Sid": "IAMRoleAssumption",
+      "Effect": "Allow",
+      "Action": [
+        "sts:AssumeRole"
+      ],
+      "Resource": [
+        "arn:aws:iam::ACCOUNT:role/prod-app-*",
+        "arn:aws:iam::ACCOUNT:role/staging-app-*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "us-east-1"
+        },
+        "Bool": {
+          "aws:SecureTransport": "true"
+        }
+      }
+    },
+    {
+      "Sid": "RDSReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "rds:DescribeDBInstances",
+        "rds:DescribeDBSnapshots",
+        "rds:ListTagsForResource"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "us-east-1"
+        }
+      }
+    },
+    {
+      "Sid": "RDSDataAccess",
+      "Effect": "Allow",
+      "Action": [
+        "rds-data:ExecuteStatement",
+        "rds-data:BatchExecuteStatement"
+      ],
+      "Resource": "arn:aws:rds:us-east-1:ACCOUNT:cluster:prod-app-cluster",
+      "Condition": {
+        "StringEquals": {
+          "aws:SourceVpc": "vpc-prod-12345"
+        }
+      }
+    },
+    {
+      "Sid": "SecretsManagerScoped",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:GetSecretValue"
+      ],
+      "Resource": "arn:aws:secretsmanager:us-east-1:ACCOUNT:secret:/app/production/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "us-east-1"
+        },
+        "Bool": {
+          "aws:SecureTransport": "true"
+        },
+        "DateLessThan": {
+          "aws:CurrentTime": "2026-12-31T23:59:59Z"
+        }
+      }
+    },
+    {
+      "Sid": "DenyInsecureTransport",
+      "Effect": "Deny",
+      "Action": "*",
+      "Resource": "*",
+      "Condition": {
+        "Bool": {
+          "aws:SecureTransport": "false"
+        }
+      }
+    },
+    {
+      "Sid": "DenyMFAOptionalForReadOnly",
+      "Effect": "Deny",
+      "Action": [
+        "sts:GetSessionToken"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "BoolIfExists": {
+          "aws:MultiFactorAuthPresent": "false"
+        }
+      }
+    }
+  ]
+}

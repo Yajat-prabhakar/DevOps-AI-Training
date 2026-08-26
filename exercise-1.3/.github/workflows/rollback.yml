@@ -1,0 +1,116 @@
+name: Manual Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment to rollback'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      service:
+        description: 'Service to rollback'
+        required: true
+        type: choice
+        options:
+          - backend-service
+          - frontend-service
+          - all
+      reason:
+        description: 'Reason for rollback'
+        required: true
+        type: string
+
+env:
+  AWS_REGION: us-east-1
+  ECS_CLUSTER_STAGING: staging-cluster
+  ECS_CLUSTER_PRODUCTION: production-cluster
+
+jobs:
+  rollback:
+    name: Execute Rollback
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Rollback backend-service
+        if: github.event.inputs.service == 'backend-service' || github.event.inputs.service == 'all'
+        run: |
+          CLUSTER="${{ github.event.inputs.environment == 'production' && env.ECS_CLUSTER_PRODUCTION || env.ECS_CLUSTER_STAGING }}"
+          
+          # Get current active task definition (excluding the one being deployed)
+          PREV_TASK_DEF=$(aws ecs describe-services \
+            --cluster $CLUSTER \
+            --services backend-service \
+            --query 'services[0].deployments[?status==`ACTIVE`].taskDefinition | [1]' \
+            --output text)
+          
+          if [ "$PREV_TASK_DEF" == "None" ] || [ -z "$PREV_TASK_DEF" ]; then
+            echo "No previous task definition found. Getting the one before current..."
+            PREV_TASK_DEF=$(aws ecs describe-services \
+              --cluster $CLUSTER \
+              --services backend-service \
+              --query 'services[0].deployments[?status==`ACTIVE`].taskDefinition | [0]' \
+              --output text)
+          fi
+          
+          echo "Rolling back backend-service to: $PREV_TASK_DEF"
+          
+          aws ecs update-service \
+            --cluster $CLUSTER \
+            --service backend-service \
+            --task-definition $PREV_TASK_DEF \
+            --force-new-deployment
+
+      - name: Rollback frontend-service
+        if: github.event.inputs.service == 'frontend-service' || github.event.inputs.service == 'all'
+        run: |
+          CLUSTER="${{ github.event.inputs.environment == 'production' && env.ECS_CLUSTER_PRODUCTION || env.ECS_CLUSTER_STAGING }}"
+          
+          PREV_TASK_DEF=$(aws ecs describe-services \
+            --cluster $CLUSTER \
+            --services frontend-service \
+            --query 'services[0].deployments[?status==`ACTIVE`].taskDefinition | [1]' \
+            --output text)
+          
+          if [ "$PREV_TASK_DEF" == "None" ] || [ -z "$PREV_TASK_DEF" ]; then
+            echo "No previous task definition found. Getting the one before current..."
+            PREV_TASK_DEF=$(aws ecs describe-services \
+              --cluster $CLUSTER \
+              --services frontend-service \
+              --query 'services[0].deployments[?status==`ACTIVE`].taskDefinition | [0]' \
+              --output text)
+          fi
+          
+          echo "Rolling back frontend-service to: $PREV_TASK_DEF"
+          
+          aws ecs update-service \
+            --cluster $CLUSTER \
+            --service frontend-service \
+            --task-definition $PREV_TASK_DEF \
+            --force-new-deployment
+
+      - name: Wait for stability
+        run: |
+          CLUSTER="${{ github.event.inputs.environment == 'production' && env.ECS_CLUSTER_PRODUCTION || env.ECS_CLUSTER_STAGING }}"
+          SERVICES="${{ github.event.inputs.service == 'all' && 'backend-service frontend-service' || github.event.inputs.service }}"
+          
+          aws ecs wait services-stable \
+            --cluster $CLUSTER \
+            --services $SERVICES
+
+      - name: Log rollback
+        run: |
+          echo "=== ROLLBACK SUMMARY ==="
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Service: ${{ github.event.inputs.service }}"
+          echo "Reason: ${{ github.event.inputs.reason }}"
+          echo "Initiated by: ${{ github.actor }}"
+          echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
