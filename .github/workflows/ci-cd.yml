@@ -66,7 +66,7 @@ jobs:
       - name: Validate YAML
         run: |
           pip install yamllint
-          yamllint -d relaxed .github/workflows/
+          yamllint -d "{extends: default, rules: {line-length: disable, truthy: disable, comments-indentation: disable}}" .github/workflows/
 
   # ============================================================
   # Stage 2: Backend Tests
@@ -139,7 +139,7 @@ jobs:
       - name: Install dependencies
         run: |
           cd ${{ env.FRONTEND_PATH }}
-          npm ci
+          npm install
 
       - name: Run type check (build)
         run: |
@@ -431,20 +431,20 @@ jobs:
       - name: Rollback ECS services
         run: |
           echo "Rolling back ECS services to previous task definition..."
-          
+
           # Get previous task definition for backend
           PREV_BACKEND=$(aws ecs describe-services \
             --cluster $ECS_CLUSTER_PRODUCTION \
             --services backend-service \
             --query 'services[0].deployments[?status==`ACTIVE`].taskDefinition' \
             --output text | awk '{print $2}')
-          
+
           aws ecs update-service \
             --cluster $ECS_CLUSTER_PRODUCTION \
             --service backend-service \
             --task-definition $PREV_BACKEND \
             --force-new-deployment
-          
+
           echo "Rollback initiated for backend: $PREV_BACKEND"
 
       - name: Notify rollback
