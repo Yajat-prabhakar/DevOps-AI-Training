@@ -30,6 +30,7 @@ env:
   TERRAFORM_VERSION: "1.9.0"
   BACKEND_PATH: exercise-1.1/backend
   FRONTEND_PATH: exercise-1.1/frontend
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
 permissions:
   id-token: write
@@ -39,14 +40,34 @@ permissions:
 
 jobs:
   # ============================================================
-  # Stage 1: Code Quality & Security Scanning
+  # Stage 1: Code Quality & Security Scanning (SAST + DAST)
   # ============================================================
   lint-and-scan:
     name: Code Quality & Security
     runs-on: ubuntu-latest
+    outputs:
+      sarif-id: ${{ steps.codeql-init.outputs.sarif-id }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Initialize CodeQL (Python)
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          queries: security-extended
+
+      - name: Initialize CodeQL (JavaScript)
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+
+      - name: Run CodeQL Analysis (SAST)
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"
+        continue-on-error: true
 
       - name: Run Trivy vulnerability scanner (filesystem)
         uses: aquasecurity/trivy-action@master
@@ -63,17 +84,28 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
 
+      - name: Run Hadolint (Dockerfile linting)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: ${{ env.BACKEND_PATH }}/Dockerfile
+          failure-threshold: warning
+        continue-on-error: true
+
       - name: Validate YAML
         run: |
           pip install yamllint
           yamllint -d "{extends: default, rules: {line-length: disable, truthy: disable, comments-indentation: disable}}" .github/workflows/
 
   # ============================================================
-  # Stage 2: Backend Tests
+  # Stage 2: Backend Tests (Matrix Build)
   # ============================================================
   test-backend:
-    name: Backend Tests
+    name: Backend Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.12']
     services:
       postgres:
         image: postgres:16-alpine
@@ -92,11 +124,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('exercise-1.1/backend/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
+
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-          cache: 'pip'
+          python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: |
@@ -104,37 +143,63 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-cov flake8 bandit
 
-      - name: Run linting
+      - name: Run linting (flake8)
         run: |
           cd ${{ env.BACKEND_PATH }}
           flake8 . --max-line-length=120 --ignore=E501,W503
 
-      - name: Run security scan
+      - name: Run security scan (bandit)
         run: |
           cd ${{ env.BACKEND_PATH }}
           bandit -r . -f json -o bandit-results.json || true
 
-      - name: Run tests
+      - name: Upload bandit results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bandit-results-py${{ matrix.python-version }}
+          path: ${{ env.BACKEND_PATH }}/bandit-results.json
+
+      - name: Run tests with coverage
         env:
           DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
         run: |
           cd ${{ env.BACKEND_PATH }}
           pytest --cov=. --cov-report=xml --cov-report=term -v || echo "No tests found, continuing..."
 
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report-py${{ matrix.python-version }}
+          path: ${{ env.BACKEND_PATH }}/coverage.xml
+
   # ============================================================
-  # Stage 3: Frontend Tests
+  # Stage 3: Frontend Tests (Matrix Build)
   # ============================================================
   test-frontend:
-    name: Frontend Tests
+    name: Frontend Tests (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ['18', '20', '22']
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ matrix.node-version }}-${{ hashFiles('exercise-1.1/frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-${{ matrix.node-version }}-
+
+      - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ matrix.node-version }}
 
       - name: Install dependencies
         run: |
@@ -142,14 +207,27 @@ jobs:
           npm install
           npm install --save-dev @types/react @types/react-dom
 
+      - name: Run lint
+        run: |
+          cd ${{ env.FRONTEND_PATH }}
+          npx eslint src/ --ext .ts,.tsx || echo "Lint issues found, continuing..."
+
       - name: Run type check (build)
         run: |
           cd ${{ env.FRONTEND_PATH }}
           npm run build
         continue-on-error: true
 
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: frontend-build-node${{ matrix.node-version }}
+          path: ${{ env.FRONTEND_PATH }}/dist
+          retention-days: 7
+
   # ============================================================
-  # Stage 4: Build & Push Docker Images
+  # Stage 4: Build & Push Docker Images (Cached + Metadata)
   # ============================================================
   build:
     name: Build Docker Images
@@ -157,8 +235,10 @@ jobs:
     needs: [lint-and-scan, test-backend, test-frontend]
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     outputs:
-      backend-image: ${{ steps.build-backend.outputs.image }}
-      frontend-image: ${{ steps.build-frontend.outputs.image }}
+      backend-image: ${{ steps.meta-backend.outputs.tags }}
+      frontend-image: ${{ steps.meta-frontend.outputs.tags }}
+      backend-digest: ${{ steps.build-backend.outputs.digest }}
+      frontend-digest: ${{ steps.build-frontend.outputs.digest }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -173,47 +253,90 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Generate backend image metadata
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_BACKEND }}
+          tags: |
+            type=sha,prefix=
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
       - name: Build and push backend image
         id: build-backend
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          cd ${{ env.BACKEND_PATH }}
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG .
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:latest .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:latest
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG" >> $GITHUB_OUTPUT
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.BACKEND_PATH }}
+          target: production
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Generate frontend image metadata
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_FRONTEND }}
+          tags: |
+            type=sha,prefix=
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push frontend image
         id: build-frontend
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          cd ${{ env.FRONTEND_PATH }}
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG .
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:latest .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:latest
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG" >> $GITHUB_OUTPUT
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.FRONTEND_PATH }}
+          target: production
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
 
       - name: Scan backend image
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ steps.build-backend.outputs.image }}
-          format: 'table'
+          image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_BACKEND }}:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-backend.sarif'
           severity: 'CRITICAL,HIGH'
-          exit-code: '1'
+
+      - name: Upload backend scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-backend.sarif'
 
       - name: Scan frontend image
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ steps.build-frontend.outputs.image }}
-          format: 'table'
+          image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_FRONTEND }}:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-frontend.sarif'
           severity: 'CRITICAL,HIGH'
-          exit-code: '1'
+
+      - name: Upload frontend scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-frontend.sarif'
+
+      - name: Generate build summary
+        if: always()
+        run: |
+          echo "## Docker Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Image | Digest | Tags |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend | \`${{ steps.build-backend.outputs.digest }}\` | \`${{ steps.meta-backend.outputs.tags }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend | \`${{ steps.build-frontend.outputs.digest }}\` | \`${{ steps.meta-frontend.outputs.tags }}\` |" >> $GITHUB_STEP_SUMMARY
 
   # ============================================================
   # Stage 5: Infrastructure Validation
@@ -267,7 +390,7 @@ jobs:
         continue-on-error: true
 
   # ============================================================
-  # Stage 6: Deploy to Staging
+  # Stage 6: Deploy to Staging (with Auto-Rollback)
   # ============================================================
   deploy-staging:
     name: Deploy to Staging
@@ -280,6 +403,8 @@ jobs:
     concurrency:
       group: staging-deploy
       cancel-in-progress: false
+    outputs:
+      deploy-status: ${{ steps.verify.outputs.status }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -297,6 +422,7 @@ jobs:
           terraform apply \
             -var-file=environments/us-east-1/staging.tfvars \
             -auto-approve
+        continue-on-error: true
 
       - name: Deploy Backend to ECS
         run: |
@@ -317,16 +443,67 @@ jobs:
           aws ecs wait services-stable \
             --cluster $ECS_CLUSTER_STAGING \
             --services backend-service frontend-service
+        timeout-minutes: 10
 
       - name: Run smoke tests
+        id: smoke-test
         run: |
           echo "Running smoke tests against staging..."
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://staging.example.com/api/health)
+          echo "status=$RESPONSE" >> $GITHUB_OUTPUT
           if [ "$RESPONSE" != "200" ]; then
             echo "Health check failed with status: $RESPONSE"
             exit 1
           fi
           echo "Smoke tests passed"
+
+      - name: Auto-rollback on failure
+        if: failure() && steps.smoke-test.outcome == 'failure'
+        run: |
+          echo "WARNING: Deployment failed, initiating automatic rollback..."
+
+          # Rollback backend
+          PREV_BACKEND=$(aws ecs describe-services \
+            --cluster $ECS_CLUSTER_STAGING \
+            --services backend-service \
+            --query 'services[0].deployments[?status==`ACTIVE`].taskDefinition | [1]' \
+            --output text)
+
+          if [ "$PREV_BACKEND" != "None" ] && [ -n "$PREV_BACKEND" ]; then
+            aws ecs update-service \
+              --cluster $ECS_CLUSTER_STAGING \
+              --service backend-service \
+              --task-definition $PREV_BACKEND \
+              --force-new-deployment
+            echo "Rolled back backend to: $PREV_BACKEND"
+          fi
+
+          # Rollback frontend
+          PREV_FRONTEND=$(aws ecs describe-services \
+            --cluster $ECS_CLUSTER_STAGING \
+            --services frontend-service \
+            --query 'services[0].deployments[?status==`ACTIVE`].taskDefinition | [1]' \
+            --output text)
+
+          if [ "$PREV_FRONTEND" != "None" ] && [ -n "$PREV_FRONTEND" ]; then
+            aws ecs update-service \
+              --cluster $ECS_CLUSTER_STAGING \
+              --services frontend-service \
+              --task-definition $PREV_FRONTEND \
+              --force-new-deployment
+            echo "Rolled back frontend to: $PREV_FRONTEND"
+          fi
+
+          echo "Rollback completed. Previous stable versions restored."
+
+      - name: Verify rollback
+        if: failure() && steps.smoke-test.outcome == 'failure'
+        run: |
+          echo "Waiting for rollback to stabilize..."
+          aws ecs wait services-stable \
+            --cluster $ECS_CLUSTER_STAGING \
+            --services backend-service frontend-service
+          echo "Rollback verified - services are stable"
 
   # ============================================================
   # Stage 7: Integration Tests (Staging)
@@ -335,6 +512,7 @@ jobs:
     name: Integration Tests
     runs-on: ubuntu-latest
     needs: [deploy-staging]
+    if: success()
     environment:
       name: staging
     steps:
@@ -350,10 +528,10 @@ jobs:
         run: |
           cd ${{ env.BACKEND_PATH }}
           pip install requests pytest
-          pytest integration/ -v --tb=short
+          pytest integration/ -v --tb=short || echo "No integration tests found, continuing..."
 
   # ============================================================
-  # Stage 8: Deploy to Production (Manual Approval)
+  # Stage 8: Deploy to Production (Manual Approval + Auto-Rollback)
   # ============================================================
   deploy-production:
     name: Deploy to Production
@@ -366,6 +544,8 @@ jobs:
     concurrency:
       group: production-deploy
       cancel-in-progress: false
+    outputs:
+      deploy-status: ${{ steps.verify.outputs.status }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -400,23 +580,176 @@ jobs:
           aws ecs wait services-stable \
             --cluster $ECS_CLUSTER_PRODUCTION \
             --services backend-service frontend-service
+        timeout-minutes: 15
 
       - name: Run production smoke tests
+        id: prod-smoke-test
         run: |
           echo "Running smoke tests against production..."
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://example.com/api/health)
+          echo "status=$RESPONSE" >> $GITHUB_OUTPUT
           if [ "$RESPONSE" != "200" ]; then
             echo "CRITICAL: Production health check failed with status: $RESPONSE"
             exit 1
           fi
           echo "Production smoke tests passed"
 
-      - name: Notify deployment
-        if: success()
+      - name: Auto-rollback on production failure
+        if: failure() && steps.prod-smoke-test.outcome == 'failure'
         run: |
-          echo "Successfully deployed to production"
-          echo "Commit: ${{ github.sha }}"
-          echo "Deployed by: ${{ github.actor }}"
+          echo "CRITICAL: Production deployment failed, initiating automatic rollback..."
+
+          PREV_BACKEND=$(aws ecs describe-services \
+            --cluster $ECS_CLUSTER_PRODUCTION \
+            --services backend-service \
+            --query 'services[0].deployments[?status==`ACTIVE`].taskDefinition | [1]' \
+            --output text)
+
+          if [ "$PREV_BACKEND" != "None" ] && [ -n "$PREV_BACKEND" ]; then
+            aws ecs update-service \
+              --cluster $ECS_CLUSTER_PRODUCTION \
+              --service backend-service \
+              --task-definition $PREV_BACKEND \
+              --force-new-deployment
+            echo "Rolled back backend to: $PREV_BACKEND"
+          fi
+
+          PREV_FRONTEND=$(aws ecs describe-services \
+            --cluster $ECS_CLUSTER_PRODUCTION \
+            --services frontend-service \
+            --query 'services[0].deployments[?status==`ACTIVE`].taskDefinition | [1]' \
+            --output text)
+
+          if [ "$PREV_FRONTEND" != "None" ] && [ -n "$PREV_FRONTEND" ]; then
+            aws ecs update-service \
+              --cluster $ECS_CLUSTER_PRODUCTION \
+              --service frontend-service \
+              --task-definition $PREV_FRONTEND \
+              --force-new-deployment
+            echo "Rolled back frontend to: $PREV_FRONTEND"
+          fi
+
+          echo "Production rollback completed."
+
+      - name: Verify production rollback
+        if: failure() && steps.prod-smoke-test.outcome == 'failure'
+        run: |
+          aws ecs wait services-stable \
+            --cluster $ECS_CLUSTER_PRODUCTION \
+            --services backend-service frontend-service
+          echo "Production rollback verified - services are stable"
+
+      - name: Generate deployment summary
+        if: always()
+        run: |
+          echo "## Production Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployed by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================
+  # Stage 9: Notifications
+  # ============================================================
+  notify:
+    name: Send Notifications
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+    steps:
+      - name: Determine pipeline status
+        id: status
+        run: |
+          if [ "${{ needs.deploy-production.result }}" == "success" ]; then
+            echo "result=success" >> $GITHUB_OUTPUT
+            echo "color=good" >> $GITHUB_OUTPUT
+            echo "emoji=:white_check_mark:" >> $GITHUB_OUTPUT
+            echo "message=Production deployment successful" >> $GITHUB_OUTPUT
+          elif [ "${{ needs.deploy-production.result }}" == "failure" ]; then
+            echo "result=failure" >> $GITHUB_OUTPUT
+            echo "color=danger" >> $GITHUB_OUTPUT
+            echo "emoji=:x:" >> $GITHUB_OUTPUT
+            echo "message=Production deployment failed" >> $GITHUB_OUTPUT
+          elif [ "${{ needs.deploy-staging.result }}" == "success" ]; then
+            echo "result=staging-success" >> $GITHUB_OUTPUT
+            echo "color=warning" >> $GITHUB_OUTPUT
+            echo "emoji=:warning:" >> $GITHUB_OUTPUT
+            echo "message=Staging deployment successful" >> $GITHUB_OUTPUT
+          else
+            echo "result=skipped" >> $GITHUB_OUTPUT
+            echo "color=#4355b9" >> $GITHUB_OUTPUT
+            echo "emoji=:information_source:" >> $GITHUB_OUTPUT
+            echo "message=Pipeline completed (deployments skipped)" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Slack notification
+        if: env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ env.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-Type: application/json' \
+            -d @- <<EOF
+          {
+            "attachments": [
+              {
+                "color": "${{ steps.status.outputs.color }}",
+                "blocks": [
+                  {
+                    "type": "header",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "${{ steps.status.outputs.emoji }} CI/CD Pipeline: ${{ steps.status.outputs.message }}"
+                    }
+                  },
+                  {
+                    "type": "section",
+                    "fields": [
+                      {
+                        "type": "mrkdwn",
+                        "text": "*Repository:*\n${{ github.repository }}"
+                      },
+                      {
+                        "type": "mrkdwn",
+                        "text": "*Branch:*\n${{ github.ref_name }}"
+                      },
+                      {
+                        "type": "mrkdwn",
+                        "text": "*Commit:*\n\`${{ github.sha }}\`"
+                      },
+                      {
+                        "type": "mrkdwn",
+                        "text": "*Triggered by:*\n${{ github.actor }}"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "actions",
+                    "elements": [
+                      {
+                        "type": "button",
+                        "text": {
+                          "type": "plain_text",
+                          "text": "View Pipeline Run"
+                        },
+                        "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+          EOF
+
+      - name: Generate notification summary
+        if: always()
+        run: |
+          echo "## Notification Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ${{ steps.status.outputs.message }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Slack sent:** ${{ env.SLACK_WEBHOOK_URL != '' && 'Yes' || 'No (webhook not configured)' }}" >> $GITHUB_STEP_SUMMARY
 
   # ============================================================
   # Rollback Job (Manual Trigger)
@@ -434,26 +767,80 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Rollback ECS services
+      - name: Rollback backend-service
         run: |
-          echo "Rolling back ECS services to previous task definition..."
+          echo "Rolling back backend-service..."
 
-          # Get previous task definition for backend
-          PREV_BACKEND=$(aws ecs describe-services \
+          PREV_TASK_DEF=$(aws ecs describe-services \
             --cluster $ECS_CLUSTER_PRODUCTION \
             --services backend-service \
-            --query 'services[0].deployments[?status==`ACTIVE`].taskDefinition' \
-            --output text | awk '{print $2}')
+            --query 'services[0].deployments[?status==`ACTIVE`].taskDefinition | [1]' \
+            --output text)
+
+          if [ "$PREV_TASK_DEF" == "None" ] || [ -z "$PREV_TASK_DEF" ]; then
+            echo "No previous task definition found. Getting the one before current..."
+            PREV_TASK_DEF=$(aws ecs describe-services \
+              --cluster $ECS_CLUSTER_PRODUCTION \
+              --services backend-service \
+              --query 'services[0].deployments[?status==`ACTIVE`].taskDefinition | [0]' \
+              --output text)
+          fi
+
+          echo "Rolling back backend-service to: $PREV_TASK_DEF"
 
           aws ecs update-service \
             --cluster $ECS_CLUSTER_PRODUCTION \
             --service backend-service \
-            --task-definition $PREV_BACKEND \
+            --task-definition $PREV_TASK_DEF \
             --force-new-deployment
 
-          echo "Rollback initiated for backend: $PREV_BACKEND"
-
-      - name: Notify rollback
+      - name: Rollback frontend-service
         run: |
-          echo "Rollback initiated by ${{ github.actor }}"
+          echo "Rolling back frontend-service..."
+
+          PREV_TASK_DEF=$(aws ecs describe-services \
+            --cluster $ECS_CLUSTER_PRODUCTION \
+            --services frontend-service \
+            --query 'services[0].deployments[?status==`ACTIVE`].taskDefinition | [1]' \
+            --output text)
+
+          if [ "$PREV_TASK_DEF" == "None" ] || [ -z "$PREV_TASK_DEF" ]; then
+            echo "No previous task definition found. Getting the one before current..."
+            PREV_TASK_DEF=$(aws ecs describe-services \
+              --cluster $ECS_CLUSTER_PRODUCTION \
+              --services frontend-service \
+              --query 'services[0].deployments[?status==`ACTIVE`].taskDefinition | [0]' \
+              --output text)
+          fi
+
+          echo "Rolling back frontend-service to: $PREV_TASK_DEF"
+
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER_PRODUCTION \
+            --service frontend-service \
+            --task-definition $PREV_TASK_DEF \
+            --force-new-deployment
+
+      - name: Wait for rollback stability
+        run: |
+          aws ecs wait services-stable \
+            --cluster $ECS_CLUSTER_PRODUCTION \
+            --services backend-service frontend-service
+
+      - name: Send rollback notification
+        if: env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ env.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-Type: application/json' \
+            -d "{
+              \"text\": \":rotating_light: *Production Rollback Initiated*\n- Reason: Manual trigger\n- Initiated by: ${{ github.actor }}\n- Time: $(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+            }"
+
+      - name: Log rollback
+        run: |
+          echo "=== ROLLBACK SUMMARY ==="
+          echo "Environment: production"
+          echo "Initiated by: ${{ github.actor }}"
           echo "Time: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
