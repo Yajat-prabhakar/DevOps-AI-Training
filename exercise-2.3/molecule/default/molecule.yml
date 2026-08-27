@@ -1,0 +1,68 @@
+{
+  "tool": "molecule",
+  "dependency": {
+    "name": "galaxy",
+    "options": {
+      "ignore-certs": true,
+      "ignore-errors": true,
+      "role-file": "requirements.yml",
+      "roles-path": "roles"
+    }
+  },
+  "driver": {
+    "name": "docker"
+  },
+  "platforms": [
+    {
+      "name": "instance",
+      "image": "geerlingguy/docker-ubuntu2204-ansible:latest",
+      "privileged": true,
+      "pre_build_image": true,
+      "docker_networks": [
+        {
+          "name": "molecule_default",
+          "driver": "bridge"
+        }
+      ],
+      "volumes": [
+        "/sys/fs/cgroup:/sys/fs/cgroup:rw"
+      ],
+      "cgroupns_mode": "host",
+      "command": "/lib/systemd/systemd"
+    }
+  ],
+  "provisioner": {
+    "name": "ansible",
+    "playbooks": {
+      "converge": "converge.yml",
+      "verify": "verify.yml"
+    },
+    "inventory": {
+      "host_vars": {
+        "instance": {
+          "ansible_python_interpreter": "/usr/bin/python3"
+        }
+      }
+    }
+  },
+  "verifier": {
+    "name": "ansible"
+  },
+  "scenario": {
+    "name": "default",
+    "test_sequence": [
+      "dependency",
+      "cleanup",
+      "destroy",
+      "syntax",
+      "create",
+      "prepare",
+      "converge",
+      "idempotence",
+      "side_effect",
+      "verify",
+      "cleanup",
+      "destroy"
+    ]
+  }
+}

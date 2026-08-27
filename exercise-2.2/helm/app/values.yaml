@@ -1,0 +1,102 @@
+global:
+  namespace: app
+  environment: production
+
+postgresql:
+  enabled: true
+  image:
+    repository: postgres
+    tag: "16-alpine"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: standard
+  config:
+    database: appdb
+    user: appuser
+
+backend:
+  enabled: true
+  image:
+    repository: app-backend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  service:
+    type: ClusterIP
+    port: 5000
+  healthCheck:
+    path: /api/health
+    initialDelaySeconds: 30
+    periodSeconds: 10
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilization: 70
+    targetMemoryUtilization: 80
+
+frontend:
+  enabled: true
+  image:
+    repository: app-frontend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  replicas: 2
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  service:
+    type: ClusterIP
+    port: 80
+  healthCheck:
+    path: /healthz
+    initialDelaySeconds: 10
+    periodSeconds: 10
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilization: 70
+    targetMemoryUtilization: 80
+
+ingress:
+  enabled: true
+  className: nginx
+  hostname: app.example.com
+  tls:
+    enabled: true
+    secretName: app-tls
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+
+networkPolicy:
+  enabled: true
+
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 15s
+  prometheusRules:
+    enabled: true

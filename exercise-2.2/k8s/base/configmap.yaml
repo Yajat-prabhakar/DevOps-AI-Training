@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: app
+  labels:
+    app.kubernetes.io/name: app
+data:
+  DATABASE_HOST: "postgresql"
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: "appdb"
+  BACKEND_PORT: "5000"
+  FRONTEND_PORT: "80"
+  LOG_LEVEL: "info"
+  ENVIRONMENT: "production"

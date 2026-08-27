@@ -1,0 +1,16 @@
+server {
+    listen 80;
+    server_name _;
+
+    location / {
+        root /opt/test-app;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /health {
+        access_log off;
+        return 200 "healthy\n";
+        add_header Content-Type text/plain;
+    }
+}

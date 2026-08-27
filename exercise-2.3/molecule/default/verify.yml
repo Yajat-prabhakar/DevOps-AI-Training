@@ -1,0 +1,65 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Check if nginx is installed
+      command: nginx -v
+      register: nginx_version
+      changed_when: false
+
+    - name: Assert nginx version
+      assert:
+        that:
+          - "'nginx/' in nginx_version.stderr"
+        fail_msg: "nginx is not installed"
+        success_msg: "nginx is installed"
+
+    - name: Check if nginx is running
+      systemd:
+        name: nginx
+      register: nginx_status
+
+    - name: Assert nginx is running
+      assert:
+        that:
+          - nginx_status.status.ActiveState == "active"
+        fail_msg: "nginx is not running"
+        success_msg: "nginx is running"
+
+    - name: Check if application directory exists
+      stat:
+        path: /opt/test-app
+      register: app_dir
+
+    - name: Assert application directory exists
+      assert:
+        that:
+          - app_dir.stat.exists
+        fail_msg: "Application directory does not exist"
+        success_msg: "Application directory exists"
+
+    - name: Check if nginx config exists
+      stat:
+        path: /etc/nginx/sites-available/test-app
+      register: nginx_config
+
+    - name: Assert nginx config exists
+      assert:
+        that:
+          - nginx_config.stat.exists
+        fail_msg: "Nginx config does not exist"
+        success_msg: "Nginx config exists"
+
+    - name: Check if firewall allows HTTP
+      command: ufw status
+      register: ufw_status
+      changed_when: false
+
+    - name: Assert firewall allows HTTP
+      assert:
+        that:
+          - "'80/tcp' in ufw_status.stdout"
+        fail_msg: "Firewall does not allow HTTP"
+        success_msg: "Firewall allows HTTP"
