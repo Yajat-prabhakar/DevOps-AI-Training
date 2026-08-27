@@ -47,11 +47,18 @@ variable "iam_instance_profile" {
 }
 
 variable "app_port" {
-  type    = number
-  default = 5000
+  type        = number
+  description = "Port the application listens on"
+  default     = 5000
+}
+
+variable "docker_image" {
+  type        = string
+  description = "Docker image to deploy (e.g., 123456789.dkr.ecr.us-east-1.amazonaws.com/app-backend:latest)"
 }
 
 variable "tags" {
-  type    = map(string)
-  default = {}
+  type        = map(string)
+  description = "Common tags applied to all resources"
+  default     = {}
 }

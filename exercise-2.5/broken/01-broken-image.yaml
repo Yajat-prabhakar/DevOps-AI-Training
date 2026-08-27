@@ -1,0 +1,24 @@
+# BUG: Wrong image tag - "latset" is a typo, should be "latest"
+# This will cause ImagePullBackOff error
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: app
+  labels:
+    app.kubernetes.io/name: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: backend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: backend
+    spec:
+      containers:
+        - name: backend
+          image: app-backend:latset  # BUG: Typo in tag
+          ports:
+            - containerPort: 5000

@@ -36,7 +36,7 @@ resource "aws_launch_template" "app" {
     docker run -d --name app --restart unless-stopped \
       -p ${var.app_port}:${var.app_port} \
       -e DATABASE_URL="$${DATABASE_URL}" \
-      your-registry/app-backend:latest
+      ${var.docker_image}
   EOF
   )
 

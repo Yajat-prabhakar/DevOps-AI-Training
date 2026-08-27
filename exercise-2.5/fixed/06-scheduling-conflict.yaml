@@ -1,0 +1,34 @@
+# FIX: Remove conflicting affinity and tolerations
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-scheduling-conflict
+  namespace: app
+  labels:
+    app.kubernetes.io/name: backend-scheduling-conflict
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: backend-scheduling-conflict
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: backend-scheduling-conflict
+    spec:
+      # FIXED: Use node selector instead of conflicting affinity
+      nodeSelector:
+        node-type: standard  # FIXED: Use standard nodes
+      # FIXED: No conflicting tolerations
+      containers:
+        - name: backend
+          image: app-backend:latest
+          ports:
+            - containerPort: 5000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

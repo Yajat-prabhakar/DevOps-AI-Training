@@ -1,0 +1,39 @@
+# FIX: Correct environment variable names and values
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-config-mismatch
+  namespace: app
+  labels:
+    app.kubernetes.io/name: backend-config-mismatch
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: backend-config-mismatch
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: backend-config-mismatch
+    spec:
+      containers:
+        - name: backend
+          image: app-backend:latest
+          ports:
+            - containerPort: 5000
+          env:
+            # FIXED: Use correct variable name
+            - name: DATABASE_URL  # FIXED: App expects DATABASE_URL
+              value: "postgresql://postgres:password@postgresql:5432/appdb"
+            # FIXED: Correct port in connection string
+            - name: DATABASE_PORT
+              value: "5432"  # FIXED: PostgreSQL uses 5432
+            # FIXED: Set required environment variable
+            - name: DATABASE_URL
+              value: "postgresql://postgres:password@postgresql:5432/appdb"
+            # FIXED: Valid log level value
+            - name: LOG_LEVEL
+              value: "info"  # FIXED: Valid value
+            # FIXED: Boolean value as string
+            - name: DEBUG
+              value: "false"  # FIXED: Proper boolean string

@@ -49,8 +49,7 @@ resource "aws_subnet" "private" {
 }
 
 resource "aws_eip" "nat" {
-  count  = var.az_count
-  domain = "vpc"
+  count = var.az_count
 
   tags = merge(var.tags, {
     Name = "${var.environment}-${var.region}-nat-eip-${count.index}"

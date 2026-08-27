@@ -1,0 +1,39 @@
+# BUG: Config mismatch - env vars don't match what app expects
+# App will crash on startup with configuration errors
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-config-mismatch
+  namespace: app
+  labels:
+    app.kubernetes.io/name: backend-config-mismatch
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: backend-config-mismatch
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: backend-config-mismatch
+    spec:
+      containers:
+        - name: backend
+          image: app-backend:latest
+          ports:
+            - containerPort: 5000
+          env:
+            # BUG: Variable name mismatch - app expects DATABASE_URL, not DB_HOST
+            - name: DB_HOST  # BUG: App expects DATABASE_URL
+              value: "postgresql://postgres:password@postgresql:5432/appdb"
+            # BUG: Wrong port in connection string
+            - name: DATABASE_PORT
+              value: "3306"  # BUG: PostgreSQL uses 5432, not 3306 (MySQL)
+            # BUG: Missing required environment variable
+            # - name: DATABASE_URL  # App requires this but it's not set
+            # BUG: Wrong log level value
+            - name: LOG_LEVEL
+              value: "VERBOSE"  # BUG: Valid values are debug, info, warn, error
+            # BUG: Boolean value passed as string
+            - name: DEBUG
+              value: "yes"  # BUG: Should be "true" or "false"

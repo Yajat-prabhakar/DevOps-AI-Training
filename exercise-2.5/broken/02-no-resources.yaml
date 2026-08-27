@@ -1,0 +1,29 @@
+# BUG: No resource limits - pod can consume all node resources
+# This will cause OOMKilled or node resource exhaustion
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-no-resources
+  namespace: app
+  labels:
+    app.kubernetes.io/name: backend-no-resources
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: backend-no-resources
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: backend-no-resources
+    spec:
+      containers:
+        - name: backend
+          image: app-backend:latest
+          ports:
+            - containerPort: 5000
+          # BUG: No resources defined - pod can consume unlimited CPU/memory
+          # This will cause:
+          # 1. OOMKilled when memory is exhausted
+          # 2. Node resource exhaustion affecting other pods
+          # 3. No guarantee of minimum resources

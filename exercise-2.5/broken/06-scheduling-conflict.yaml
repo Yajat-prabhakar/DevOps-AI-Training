@@ -1,0 +1,47 @@
+# BUG: Scheduling conflicts - node affinity and taints conflict
+# Pods will remain in Pending state
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-scheduling-conflict
+  namespace: app
+  labels:
+    app.kubernetes.io/name: backend-scheduling-conflict
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: backend-scheduling-conflict
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: backend-scheduling-conflict
+    spec:
+      # BUG: Affinity requires GPU nodes, but taints prevent scheduling
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-type
+                    operator: In
+                    values:
+                      - gpu  # BUG: Requires GPU nodes
+      # BUG: Tolerations don't match any taints
+      tolerations:
+        - key: "dedicated"
+          operator: "Equal"
+          value: "database"  # BUG: Wrong toleration value
+          effect: "NoSchedule"
+      containers:
+        - name: backend
+          image: app-backend:latest
+          ports:
+            - containerPort: 5000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

@@ -1,0 +1,46 @@
+# BUG: Wrong probe paths and ports
+# Pods will fail health checks and be restarted constantly
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-broken-probes
+  namespace: app
+  labels:
+    app.kubernetes.io/name: backend-broken-probes
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: backend-broken-probes
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: backend-broken-probes
+    spec:
+      containers:
+        - name: backend
+          image: app-backend:latest
+          ports:
+            - containerPort: 5000
+          # BUG: Wrong health check path (should be /api/health)
+          livenessProbe:
+            httpGet:
+              path: /health  # BUG: Wrong path, should be /api/health
+              port: 8080     # BUG: Wrong port, should be 5000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          # BUG: Wrong readiness check path
+          readinessProbe:
+            httpGet:
+              path: /ready  # BUG: Wrong path, should be /api/health
+              port: 8080    # BUG: Wrong port, should be 5000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          # BUG: Startup probe has too few failureThreshold
+          # If app takes >30s to start, pod will be killed
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 5000
+            failureThreshold: 3  # BUG: Too low, should be 30
+            periodSeconds: 10

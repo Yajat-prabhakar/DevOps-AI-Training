@@ -1,21 +1,21 @@
 variable "environment" {
-  type = string
+  type        = string
+  description = "Environment name (dev, staging, prod)"
 }
 
 variable "vpc_id" {
-  type = string
-}
-
-variable "vpc_cidr" {
-  type = string
+  type        = string
+  description = "VPC ID where security groups will be created"
 }
 
 variable "app_port" {
-  type    = number
-  default = 5000
+  type        = number
+  description = "Port the application listens on"
+  default     = 5000
 }
 
 variable "tags" {
-  type    = map(string)
-  default = {}
+  type        = map(string)
+  description = "Common tags applied to all resources"
+  default     = {}
 }
