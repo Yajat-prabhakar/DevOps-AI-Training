@@ -1,0 +1,310 @@
+# Incident Response Automation Workflow
+# Exercise 4.1: Complete Incident Response Automation
+
+name: Automated Incident Response
+
+on:
+  alert:
+    types: [firing, resolved]
+  workflow_dispatch:
+    inputs:
+      incident_id:
+        description: 'Incident ID'
+        required: true
+      severity:
+        description: 'Incident severity (critical, high, medium, low)'
+        required: true
+        default: 'medium'
+
+env:
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  PAGERDUTY_TOKEN: ${{ secrets.PAGERDUTY_TOKEN }}
+  GRAFANA_API_KEY: ${{ secrets.GRAFANA_API_KEY }}
+
+jobs:
+  # Stage 1: Detection & Analysis
+  detection:
+    name: "Stage 1: Detection & Analysis"
+    runs-on: ubuntu-latest
+    outputs:
+      incident_id: ${{ steps.analyze.outputs.incident_id }}
+      root_cause: ${{ steps.analyze.outputs.root_cause }}
+      severity: ${{ steps.analyze.outputs.severity }}
+      affected_services: ${{ steps.analyze.outputs.affected_services }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Detect and analyze incident
+        id: analyze
+        run: |
+          echo "=== Stage 1: Detection & Analysis ==="
+          
+          # Simulate incident detection
+          INCIDENT_ID="INC-$(date +%Y%m%d)-$(openssl rand -hex 4)"
+          echo "incident_id=$INCIDENT_ID" >> $GITHUB_OUTPUT
+          
+          # Analyze alert
+          if [ "${{ github.event_name }}" = "alert" ]; then
+            ALERT_NAME="${{ github.event.alert.labels.alertname }}"
+            SEVERITY="${{ github.event.alert.labels.severity }}"
+            SERVICE="${{ github.event.alert.labels.service }}"
+          else
+            ALERT_NAME="Manual Incident"
+            SEVERITY="${{ inputs.severity }}"
+            SERVICE="unknown"
+          fi
+          
+          echo "root_cause=High latency detected in $SERVICE" >> $GITHUB_OUTPUT
+          echo "severity=$SEVERITY" >> $GITHUB_OUTPUT
+          echo "affected_services=$SERVICE" >> $GITHUB_OUTPUT
+          
+          echo "Incident ID: $INCIDENT_ID"
+          echo "Alert: $ALERT_NAME"
+          echo "Severity: $SEVERITY"
+          echo "Service: $SERVICE"
+
+      - name: Collect metrics and logs
+        run: |
+          echo "=== Collecting Metrics and Logs ==="
+          
+          # Collect Prometheus metrics
+          echo "Collecting metrics from Prometheus..."
+          
+          # Collect Loki logs
+          echo "Collecting logs from Loki..."
+          
+          # Collect traces
+          echo "Collecting traces from Jaeger..."
+
+      - name: AI-powered root cause analysis
+        run: |
+          echo "=== AI-Powered Root Cause Analysis ==="
+          
+          # Simulate Claude analysis
+          echo "Claude analyzing logs and metrics..."
+          echo "Root cause hypothesis: Database connection pool exhaustion"
+          echo "Confidence: 85%"
+          echo "Recommended actions:"
+          echo "  1. Check database connection pool settings"
+          echo "  2. Review recent code changes"
+          echo "  3. Monitor connection usage"
+
+      - name: Send notification
+        if: always()
+        run: |
+          echo "=== Sending Detection Notification ==="
+          
+          curl -X POST "${{ env.SLACK_WEBHOOK_URL }}" \
+            -H 'Content-type: application/json' \
+            -d '{
+              "text": "🚨 *Incident Detected*\n*ID:* ${{ steps.analyze.outputs.incident_id }}\n*Severity:* ${{ steps.analyze.outputs.severity }}\n*Root Cause:* ${{ steps.analyze.outputs.root_cause }}\n*Affected Services:* ${{ steps.analyze.outputs.affected_services }}"
+            }'
+
+  # Stage 2: Investigation & Debugging
+  investigation:
+    name: "Stage 2: Investigation & Debugging"
+    needs: detection
+    runs-on: ubuntu-latest
+    outputs:
+      findings: ${{ steps.investigate.outputs.findings }}
+      proposed_fix: ${{ steps.investigate.outputs.proposed_fix }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: AI-powered code analysis
+        id: investigate
+        run: |
+          echo "=== Stage 2: Investigation & Debugging ==="
+          
+          # Simulate Cursor analyzing codebase
+          echo "Cursor analyzing codebase for recent changes..."
+          echo "Found 3 recent changes in database connection handling"
+          
+          # Simulate Codeium generating diagnostic scripts
+          echo "Codeium generating diagnostic scripts..."
+          echo "Created diagnostic.sh script"
+          
+          # Simulate ChatGPT creating runbook
+          echo "ChatGPT creating investigation runbook..."
+          echo "Created investigation-runbook.md"
+          
+          echo "findings=Database connection pool exhaustion caused by missing connection release in new API endpoint" >> $GITHUB_OUTPUT
+          echo "proposed_fix=Add connection.release() in api/users.py" >> $GITHUB_OUTPUT
+
+      - name: Run diagnostic scripts
+        run: |
+          echo "=== Running Diagnostic Scripts ==="
+          
+          echo "Checking database connections..."
+          echo "Active connections: 95/100"
+          echo "Connection pool usage: 95%"
+          
+          echo "Checking application logs..."
+          echo "Found 50 'connection timeout' errors in last hour"
+          
+          echo "Checking recent deployments..."
+          echo "Deployed 2 hours ago: feat: Add new user API endpoint"
+
+      - name: Generate investigation report
+        run: |
+          echo "=== Generating Investigation Report ==="
+          
+          cat > investigation-report.md << EOF
+          # Investigation Report
+          
+          ## Incident: ${{ needs.detection.outputs.incident_id }}
+          
+          ## Findings
+          - Database connection pool exhaustion
+          - Missing connection.release() in new API endpoint
+          - 95% connection pool usage
+          
+          ## Root Cause
+          New API endpoint in api/users.py does not release database connections
+          
+          ## Proposed Fix
+          Add connection.release() in api/users.py after query execution
+          
+          ## Risk Assessment
+          - Risk: Low
+          - Impact: High
+          - Confidence: 90%
+          EOF
+
+  # Stage 3: Resolution & Recovery
+  resolution:
+    name: "Stage 3: Resolution & Recovery"
+    needs: [detection, investigation]
+    runs-on: ubuntu-latest
+    outputs:
+      resolution_status: ${{ steps.resolve.outputs.status }}
+      rollback_needed: ${{ steps.resolve.outputs.rollback_needed }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate and apply fix
+        id: resolve
+        run: |
+          echo "=== Stage 3: Resolution & Recovery ==="
+          
+          # Simulate AI generating fix
+          echo "AI generating fix..."
+          echo "Applied fix: Added connection.release() in api/users.py"
+          
+          # Simulate automated testing
+          echo "Running automated tests..."
+          echo "All tests passed"
+          
+          # Simulate deployment
+          echo "Deploying fix..."
+          echo "Deployment successful"
+          
+          echo "status=resolved" >> $GITHUB_OUTPUT
+          echo "rollback_needed=false" >> $GITHUB_OUTPUT
+
+      - name: Validate resolution
+        run: |
+          echo "=== Validating Resolution ==="
+          
+          echo "Checking database connections..."
+          echo "Active connections: 45/100"
+          echo "Connection pool usage: 45%"
+          
+          echo "Checking application logs..."
+          echo "No connection timeout errors in last 10 minutes"
+          
+          echo "Checking latency..."
+          echo "p95 latency: 250ms (normal)"
+
+      - name: Send resolution notification
+        if: always()
+        run: |
+          echo "=== Sending Resolution Notification ==="
+          
+          curl -X POST "${{ env.SLACK_WEBHOOK_URL }}" \
+            -H 'Content-type: application/json' \
+            -d '{
+              "text": "✅ *Incident Resolved*\n*ID:* ${{ needs.detection.outputs.incident_id }}\n*Status:* ${{ steps.resolve.outputs.status }}\n*Resolution:* Added connection.release() in api/users.py"
+            }'
+
+  # Stage 4: Learning & Documentation
+  learning:
+    name: "Stage 4: Learning & Documentation"
+    needs: [detection, investigation, resolution]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate post-incident report
+        run: |
+          echo "=== Stage 4: Learning & Documentation ==="
+          
+          # Simulate Claude generating post-incident report
+          echo "Claude generating post-incident report..."
+          
+          cat > post-incident-report.md << EOF
+          # Post-Incident Report
+          
+          ## Incident Summary
+          - **ID:** ${{ needs.detection.outputs.incident_id }}
+          - **Severity:** ${{ needs.detection.outputs.severity }}
+          - **Duration:** 45 minutes
+          - **Impact:** High latency for API users
+          
+          ## Timeline
+          - 14:00 - New API endpoint deployed
+          - 14:15 - Database connection pool exhaustion detected
+          - 14:20 - Alert triggered
+          - 14:25 - Investigation started
+          - 14:35 - Root cause identified
+          - 14:40 - Fix applied
+          - 14:45 - Resolution validated
+          
+          ## Root Cause
+          Missing connection.release() in new API endpoint
+          
+          ## Resolution
+          Added connection.release() in api/users.py
+          
+          ## Lessons Learned
+          1. Need to add database connection release to code review checklist
+          2. Add connection pool monitoring alerts
+          3. Improve automated testing for connection handling
+          
+          ## Action Items
+          - [ ] Add connection release to code review checklist
+          - [ ] Add connection pool monitoring alerts
+          - [ ] Improve automated testing
+          EOF
+
+      - name: Update runbooks
+        run: |
+          echo "=== Updating Runbooks ==="
+          
+          echo "Updating database connection runbook..."
+          echo "Adding new failure mode: connection pool exhaustion"
+          echo "Adding resolution: connection.release()"
+
+      - name: Update ML models
+        run: |
+          echo "=== Updating ML Models ==="
+          
+          echo "Updating anomaly detection models..."
+          echo "Adding new pattern: connection pool exhaustion"
+          echo "Updating prediction models..."
+
+      - name: Update knowledge base
+        run: |
+          echo "=== Updating Knowledge Base ==="
+          
+          echo "Adding incident to knowledge base..."
+          echo "Adding resolution to knowledge base..."
+          echo "Adding lessons learned to knowledge base..."
