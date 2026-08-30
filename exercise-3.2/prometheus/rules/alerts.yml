@@ -1,0 +1,380 @@
+# Alerting Rules for Application Performance Intelligence
+# Exercise 3.2: Application Performance Intelligence
+
+groups:
+  # Latency Alerts
+  - name: latency_alerts
+    rules:
+      # High latency p95
+      - alert: HighLatencyP95
+        expr: http:latency_p95:histogram > 2
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+          service: http
+        annotations:
+          summary: "High latency p95 detected"
+          description: |
+            HTTP latency p95 is {{ $value | humanizeDuration }}.
+            Service: {{ $labels.service }}
+            Method: {{ $labels.method }}
+          runbook: "Check database queries, optimize slow endpoints"
+
+      # Critical latency
+      - alert: CriticalLatency
+        expr: http:latency_p95:histogram > 5
+        for: 3m
+        labels:
+          severity: critical
+          category: performance
+          service: http
+        annotations:
+          summary: "Critical latency detected"
+          description: |
+            HTTP latency p95 is {{ $value | humanizeDuration }}.
+            Service: {{ $labels.service }}
+          runbook: "Immediate investigation required"
+
+      # Latency anomaly
+      - alert: LatencyAnomaly
+        expr: http:latency_anomaly_score:zscore > 2.5
+        for: 5m
+        labels:
+          severity: warning
+          category: anomaly
+          service: http
+        annotations:
+          summary: "Latency anomaly detected"
+          description: |
+            Latency is {{ $value | humanize }} standard deviations above mean.
+            Service: {{ $labels.service }}
+          runbook: "Check for performance regressions"
+
+  # Error Rate Alerts
+  - name: error_rate_alerts
+    rules:
+      # High error rate
+      - alert: HighErrorRate
+        expr: http:error_rate:rate1m > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+          service: http
+        annotations:
+          summary: "High HTTP error rate detected"
+          description: |
+            HTTP error rate is {{ $value | humanizePercentage }}.
+            Service: {{ $labels.service }}
+          runbook: "Check application logs, investigate errors"
+
+      # Critical error rate
+      - alert: CriticalErrorRate
+        expr: http:error_rate:rate1m > 0.1
+        for: 3m
+        labels:
+          severity: critical
+          category: performance
+          service: http
+        annotations:
+          summary: "Critical HTTP error rate detected"
+          description: |
+            HTTP error rate is {{ $value | humanizePercentage }}.
+            Service: {{ $labels.service }}
+          runbook: "Immediate investigation required"
+
+      # Error rate regression
+      - alert: ErrorRateRegression
+        expr: perf:error_regression:detected == 1
+        for: 5m
+        labels:
+          severity: warning
+          category: regression
+          service: http
+        annotations:
+          summary: "Error rate regression detected"
+          description: |
+            Error rate has increased significantly.
+            Service: {{ $labels.service }}
+          runbook: "Check recent deployments, compare with baseline"
+
+  # Throughput Alerts
+  - name: throughput_alerts
+    rules:
+      # Low throughput
+      - alert: LowThroughput
+        expr: http:throughput:rps < 10
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+          service: http
+        annotations:
+          summary: "Low HTTP throughput detected"
+          description: |
+            HTTP throughput is {{ $value }} requests/second.
+            Service: {{ $labels.service }}
+          runbook: "Check load balancer, verify service health"
+
+      # Throughput regression
+      - alert: ThroughputRegression
+        expr: perf:throughput_regression:detected == 1
+        for: 5m
+        labels:
+          severity: warning
+          category: regression
+          service: http
+        annotations:
+          summary: "Throughput regression detected"
+          description: |
+            Throughput has decreased significantly.
+            Service: {{ $labels.service }}
+          runbook: "Check recent deployments, compare with baseline"
+
+  # Availability Alerts
+  - name: availability_alerts
+    rules:
+      # Low availability
+      - alert: LowAvailability
+        expr: http:availability:ratio < 0.99
+        for: 5m
+        labels:
+          severity: warning
+          category: availability
+          service: http
+        annotations:
+          summary: "Low HTTP availability detected"
+          description: |
+            HTTP availability is {{ $value | humanizePercentage }}.
+            Service: {{ $labels.service }}
+          runbook: "Check service health, verify deployments"
+
+      # Critical availability
+      - alert: CriticalAvailability
+        expr: http:availability:ratio < 0.95
+        for: 3m
+        labels:
+          severity: critical
+          category: availability
+          service: http
+        annotations:
+          summary: "Critical HTTP availability detected"
+          description: |
+            HTTP availability is {{ $value | humanizePercentage }}.
+            Service: {{ $labels.service }}
+          runbook: "Immediate investigation required"
+
+  # Database Performance Alerts
+  - name: database_alerts
+    rules:
+      # High database connections
+      - alert: HighDatabaseConnections
+        expr: db:connections:count > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+          service: database
+        annotations:
+          summary: "High database connection count"
+          description: |
+            Database connections: {{ $value }}
+          runbook: "Check connection pool settings, optimize queries"
+
+      # Low cache hit ratio
+      - alert: LowCacheHitRatio
+        expr: db:cache_hit_ratio:ratio < 0.9
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+          service: database
+        annotations:
+          summary: "Low database cache hit ratio"
+          description: |
+            Cache hit ratio is {{ $value | humanizePercentage }}.
+          runbook: "Increase shared_buffers, optimize queries"
+
+      # High rollback rate
+      - alert: HighRollbackRate
+        expr: db:rollback_rate:rate1m > 0.01
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+          service: database
+        annotations:
+          summary: "High database rollback rate"
+          description: |
+            Rollback rate: {{ $value | humanizePercentage }}.
+          runbook: "Check for deadlocks, optimize transactions"
+
+      # Database deadlocks
+      - alert: DatabaseDeadlocks
+        expr: db:deadlocks:rate1m > 0
+        for: 1m
+        labels:
+          severity: warning
+          category: performance
+          service: database
+        annotations:
+          summary: "Database deadlocks detected"
+          description: |
+            Deadlock rate: {{ $value }} per second.
+          runbook: "Review transaction ordering, optimize queries"
+
+  # Cache Performance Alerts
+  - name: cache_alerts
+    rules:
+      # Low Redis hit rate
+      - alert: LowRedisHitRate
+        expr: redis:hit_rate:ratio < 0.9
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+          service: redis
+        annotations:
+          summary: "Low Redis cache hit rate"
+          description: |
+            Redis hit rate is {{ $value | humanizePercentage }}.
+          runbook: "Review cache strategy, increase cache size"
+
+      # High Redis memory usage
+      - alert: HighRedisMemory
+        expr: redis:memory_usage:bytes > 1e9
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+          service: redis
+        annotations:
+          summary: "High Redis memory usage"
+          description: |
+            Redis memory usage: {{ $value | humanize }}.
+          runbook: "Increase memory, optimize key expiration"
+
+  # Queue Performance Alerts
+  - name: queue_alerts
+    rules:
+      # High queue depth
+      - alert: HighQueueDepth
+        expr: queue:depth:count > 1000
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+          service: queue
+        annotations:
+          summary: "High message queue depth"
+          description: |
+            Queue depth: {{ $value }} messages.
+          runbook: "Scale consumers, check for processing bottlenecks"
+
+      # Queue consumer backlog
+      - alert: QueueConsumerBacklog
+        expr: queue:depth:count > 5000
+        for: 3m
+        labels:
+          severity: critical
+          category: performance
+          service: queue
+        annotations:
+          summary: "Critical message queue backlog"
+          description: |
+            Queue depth: {{ $value }} messages.
+          runbook: "Immediate scaling required"
+
+  # User Behavior Alerts
+  - name: user_behavior_alerts
+    rules:
+      # High error pages per user
+      - alert: HighErrorPagesPerUser
+        expr: user:error_pages:rate1m > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          category: user_experience
+          service: application
+        annotations:
+          summary: "High error pages per user"
+          description: |
+            Error pages per user: {{ $value }}.
+          runbook: "Check frontend errors, review user journeys"
+
+      # Low conversion rate
+      - alert: LowConversionRate
+        expr: user:conversion_rate:ratio < 0.01
+        for: 15m
+        labels:
+          severity: warning
+          category: user_experience
+          service: application
+        annotations:
+          summary: "Low user conversion rate"
+          description: |
+            Conversion rate: {{ $value | humanizePercentage }}.
+          runbook: "Review user flow, check for UX issues"
+
+  # Deployment Performance Alerts
+  - name: deployment_alerts
+    rules:
+      # Low deployment success rate
+      - alert: LowDeploymentSuccessRate
+        expr: deploy:success_rate:ratio < 0.9
+        for: 1h
+        labels:
+          severity: warning
+          category: deployment
+          service: deployment
+        annotations:
+          summary: "Low deployment success rate"
+          description: |
+            Deployment success rate: {{ $value | humanizePercentage }}.
+          runbook: "Review deployment process, check test coverage"
+
+      # High rollback rate
+      - alert: HighRollbackRate
+        expr: deploy:rollback_rate:ratio > 0.1
+        for: 1h
+        labels:
+          severity: warning
+          category: deployment
+          service: deployment
+        annotations:
+          summary: "High deployment rollback rate"
+          description: |
+            Rollback rate: {{ $value | humanizePercentage }}.
+          runbook: "Review deployment process, improve testing"
+
+  # Performance Health Alerts
+  - name: performance_health_alerts
+    rules:
+      # Low overall performance health
+      - alert: LowPerformanceHealth
+        expr: perf:health_score_overall:score < 70
+        for: 10m
+        labels:
+          severity: warning
+          category: health
+          service: performance
+        annotations:
+          summary: "Low overall performance health score"
+          description: |
+            Performance health score: {{ $value }}/100.
+          runbook: "Review individual component health scores"
+
+      # Critical performance health
+      - alert: CriticalPerformanceHealth
+        expr: perf:health_score_overall:score < 50
+        for: 5m
+        labels:
+          severity: critical
+          category: health
+          service: performance
+        annotations:
+          summary: "Critical performance health score"
+          description: |
+            Performance health score: {{ $value }}/100.
+          runbook: "Immediate investigation required"

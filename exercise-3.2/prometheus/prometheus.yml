@@ -1,0 +1,88 @@
+# Prometheus Configuration for Application Performance Intelligence
+# Exercise 3.2: Application Performance Intelligence
+
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+
+scrape_configs:
+  # Application API metrics
+  - job_name: 'app-api'
+    static_configs:
+      - targets: ['api-gateway:8080']
+        labels:
+          service: 'api-gateway'
+          environment: 'production'
+    metrics_path: '/metrics'
+
+  # Backend service metrics
+  - job_name: 'backend-service'
+    static_configs:
+      - targets: ['backend:8000']
+        labels:
+          service: 'backend'
+          environment: 'production'
+
+  # Frontend service metrics
+  - job_name: 'frontend-service'
+    static_configs:
+      - targets: ['frontend:3000']
+        labels:
+          service: 'frontend'
+          environment: 'production'
+
+  # Database metrics
+  - job_name: 'database'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          service: 'database'
+          environment: 'production'
+
+  # Redis cache metrics
+  - job_name: 'redis-cache'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+        labels:
+          service: 'redis'
+          environment: 'production'
+
+  # Message queue metrics
+  - job_name: 'message-queue'
+    static_configs:
+      - targets: ['rabbitmq-exporter:9419']
+        labels:
+          service: 'rabbitmq'
+          environment: 'production'
+
+  # Load balancer metrics
+  - job_name: 'load-balancer'
+    static_configs:
+      - targets: ['haproxy-exporter:9101']
+        labels:
+          service: 'load-balancer'
+          environment: 'production'
+
+  # CDN metrics
+  - job_name: 'cdn'
+    static_configs:
+      - targets: ['cdn-exporter:9102']
+        labels:
+          service: 'cdn'
+          environment: 'production'
+
+  # User behavior tracking
+  - job_name: 'user-analytics'
+    static_configs:
+      - targets: ['analytics:8090']
+        labels:
+          service: 'analytics'
+          environment: 'production'
+
+  # Deployment pipeline metrics
+  - job_name: 'deployment'
+    static_configs:
+      - targets: ['deploy-agent:8091']
+        labels:
+          service: 'deployment'
+          environment: 'production'
