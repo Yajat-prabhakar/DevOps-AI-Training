@@ -89,6 +89,50 @@ Complete DevOps training program covering infrastructure automation, CI/CD pipel
 - Team guidelines
 - **Location:** `exercise-2.6/`
 
+## Phase 3: Intelligent Monitoring & Observability (Weeks 8-10)
+
+### Exercise 3.1: Enterprise Anomaly Detection System
+- Prometheus recording rules (Z-scores, health scores)
+- Grafana dashboards (anomaly detection, health scoring)
+- Loki log aggregation with anomaly pipeline
+- ML models (Prophet/ARIMA ensemble)
+- Anomaly injection simulator
+- **Location:** `exercise-3.1/`
+
+### Exercise 3.2: Application Performance Intelligence
+- HTTP/Database/Cache/Queue performance metrics
+- Traffic prediction ML model
+- Automated scaling recommendations
+- Performance regression detection
+- Performance scenario simulator
+- **Location:** `exercise-3.2/`
+
+### Exercise 3.3: Infrastructure Health Prediction
+- Disk space forecasting (24h, 7d predictions)
+- Network congestion prediction
+- Security anomaly detection
+- Cost optimization recommendations
+- Maintenance scheduling
+- **Location:** `exercise-3.3/`
+
+## Phase 4: Integrated AI-Powered DevOps Workflows (Weeks 11-12)
+
+### Exercise 4.1: Complete Incident Response Automation
+- 4-stage automated pipeline (Detection, Investigation, Resolution, Learning)
+- AI-powered root cause analysis (Claude, Cursor, Codeium)
+- Automated fix generation and deployment
+- Post-incident report generation
+- Incident response runbooks
+- **Location:** `exercise-4.1/`
+
+### Exercise 4.2: Intelligent Deployment Pipeline
+- 6-stage AI-enhanced deployment pipeline
+- ML deployment risk prediction
+- Strategy optimization (rolling/canary/blue-green)
+- Canary analysis with go/no-go decisions
+- Performance monitoring and rollback
+- **Location:** `exercise-4.2/`
+
 ## Repository Structure
 
 ```
@@ -107,7 +151,12 @@ DevOps-AI-Training/
 ├── exercise-2.3/          # Testing framework
 ├── exercise-2.4/          # Infrastructure modernization
 ├── exercise-2.5/          # Debugging challenge
-└── exercise-2.6/          # Code quality standards
+├── exercise-2.6/          # Code quality standards
+├── exercise-3.1/          # Anomaly detection system
+├── exercise-3.2/          # Performance intelligence
+├── exercise-3.3/          # Infrastructure health prediction
+├── exercise-4.1/          # Incident response automation
+└── exercise-4.2/          # Intelligent deployment pipeline
 ```
 
 ## CI/CD Pipeline Status
@@ -126,11 +175,12 @@ DevOps-AI-Training/
 
 ## Tools Used
 
-- **AI Assistants:** opencode, Cursor
+- **AI Assistants:** opencode, Cursor, Claude, Codeium, ChatGPT
 - **Infrastructure:** Terraform, AWS (VPC, ECS, RDS, ALB, ASG, IAM)
 - **Containers:** Docker, Docker Compose, Kubernetes, Helm
 - **CI/CD:** GitHub Actions, Trivy, CodeQL, Hadolint
-- **Monitoring:** Prometheus, Grafana
+- **Monitoring:** Prometheus, Grafana, Loki, Alertmanager
+- **ML/Analytics:** Prophet, ARIMA, NumPy, Pandas
 - **Testing:** pytest, Terratest, Molecule
 
 ## Getting Started
