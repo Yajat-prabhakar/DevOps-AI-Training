@@ -1,0 +1,368 @@
+# Intelligent Deployment Pipeline
+# Exercise 4.2: Intelligent Deployment Pipeline
+
+name: AI-Enhanced Deployment Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy_strategy:
+        description: 'Deployment strategy (blue-green, canary, rolling)'
+        required: true
+        default: 'canary'
+      risk_level:
+        description: 'Risk level (low, medium, high)'
+        required: true
+        default: 'medium'
+
+env:
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  GRAFANA_API_KEY: ${{ secrets.GRAFANA_API_KEY }}
+  DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
+
+jobs:
+  # Pre-Deployment Analysis
+  pre-deployment:
+    name: "Pre-Deployment Analysis"
+    runs-on: ubuntu-latest
+    outputs:
+      deployment_risk: ${{ steps.analyze.outputs.risk_score }}
+      recommended_strategy: ${{ steps.analyze.outputs.strategy }}
+      deployment_allowed: ${{ steps.analyze.outputs.allowed }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: AI-powered code analysis
+        id: analyze
+        run: |
+          echo "=== Pre-Deployment Analysis ==="
+          
+          # Simulate Cursor analyzing code changes
+          echo "Cursor analyzing code changes..."
+          echo "Changed files: 15"
+          echo "Lines added: 250"
+          echo "Lines removed: 50"
+          
+          # Simulate risk assessment
+          RISK_SCORE=45
+          echo "risk_score=$RISK_SCORE" >> $GITHUB_OUTPUT
+          
+          if [ $RISK_SCORE -lt 30 ]; then
+            STRATEGY="rolling"
+            ALLOWED="true"
+          elif [ $RISK_SCORE -lt 60 ]; then
+            STRATEGY="canary"
+            ALLOWED="true"
+          else
+            STRATEGY="blue-green"
+            ALLOWED="true"
+          fi
+          
+          echo "strategy=$STRATEGY" >> $GITHUB_OUTPUT
+          echo "allowed=$ALLOWED" >> $GITHUB_OUTPUT
+          
+          echo "Risk Score: $RISK_SCORE"
+          echo "Recommended Strategy: $STRATEGY"
+          echo "Deployment Allowed: $ALLOWED"
+
+      - name: Generate test suites
+        run: |
+          echo "=== Generating Test Suites ==="
+          
+          # Simulate Codeium generating tests
+          echo "Codeium generating test suites..."
+          echo "Generated 25 unit tests"
+          echo "Generated 10 integration tests"
+          echo "Generated 5 end-to-end tests"
+          
+          echo "Test coverage: 85%"
+
+      - name: Predict deployment risk
+        run: |
+          echo "=== Predicting Deployment Risk ==="
+          
+          # Simulate ML prediction
+          echo "ML model predicting deployment risk..."
+          echo "Predicted success rate: 95%"
+          echo "Predicted rollback probability: 5%"
+          echo "Predicted performance impact: low"
+
+  # Build and Test
+  build:
+    name: "Build and Test"
+    needs: pre-deployment
+    if: needs.pre-deployment.outputs.deployment_allowed == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build application
+        run: |
+          echo "=== Building Application ==="
+          
+          echo "Building Docker image..."
+          echo "Image built successfully"
+          
+          echo "Running unit tests..."
+          echo "All unit tests passed"
+          
+          echo "Running integration tests..."
+          echo "All integration tests passed"
+
+      - name: AI-powered code review
+        run: |
+          echo "=== AI-Powered Code Review ==="
+          
+          # Simulate Claude reviewing code
+          echo "Claude reviewing code changes..."
+          echo "Code quality score: 8.5/10"
+          echo "Security vulnerabilities: 0"
+          echo "Performance issues: 1 (minor)"
+          
+          echo "Recommendation: Approve deployment"
+
+      - name: Generate deployment plan
+        run: |
+          echo "=== Generating Deployment Plan ==="
+          
+          cat > deployment-plan.md << EOF
+          # Deployment Plan
+          
+          ## Strategy
+          ${{ needs.pre-deployment.outputs.recommended_strategy }}
+          
+          ## Risk Assessment
+          - Risk Score: ${{ needs.pre-deployment.outputs.deployment_risk }}
+          - Success Rate: 95%
+          - Rollback Probability: 5%
+          
+          ## Steps
+          1. Deploy to staging
+          2. Run smoke tests
+          3. Deploy to canary (10% traffic)
+          4. Monitor for 15 minutes
+          5. Deploy to production
+          
+          ## Rollback Plan
+          1. Stop deployment
+          2. Rollback to previous version
+          3. Notify team
+          EOF
+
+  # Deploy to Staging
+  deploy-staging:
+    name: "Deploy to Staging"
+    needs: build
+    runs-on: ubuntu-latest
+    environment: staging
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to staging
+        run: |
+          echo "=== Deploying to Staging ==="
+          
+          echo "Deploying to staging environment..."
+          echo "Deployment successful"
+          
+          echo "Running smoke tests..."
+          echo "All smoke tests passed"
+
+      - name: Monitor staging deployment
+        run: |
+          echo "=== Monitoring Staging Deployment ==="
+          
+          echo "Checking application health..."
+          echo "Application is healthy"
+          
+          echo "Checking error rate..."
+          echo "Error rate: 0.1% (normal)"
+          
+          echo "Checking latency..."
+          echo "p95 latency: 200ms (normal)"
+
+      - name: AI-powered staging analysis
+        run: |
+          echo "=== AI-Powered Staging Analysis ==="
+          
+          # Simulate ChatGPT analyzing staging
+          echo "ChatGPT analyzing staging deployment..."
+          echo "Performance: Normal"
+          echo "Error rate: Normal"
+          echo "Recommendation: Proceed to production"
+
+  # Deploy to Canary
+  deploy-canary:
+    name: "Deploy to Canary"
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    environment: canary
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to canary
+        run: |
+          echo "=== Deploying to Canary ==="
+          
+          echo "Deploying to canary (10% traffic)..."
+          echo "Deployment successful"
+          
+          echo "Configuring traffic routing..."
+          echo "Traffic routed to canary"
+
+      - name: Monitor canary deployment
+        run: |
+          echo "=== Monitoring Canary Deployment ==="
+          
+          echo "Monitoring for 15 minutes..."
+          
+          # Simulate monitoring
+          for i in {1..15}; do
+            echo "Minute $i: Checking metrics..."
+            echo "  Error rate: 0.1% (normal)"
+            echo "  Latency: 200ms (normal)"
+            sleep 1
+          done
+          
+          echo "Canary deployment stable"
+
+      - name: AI-powered canary analysis
+        run: |
+          echo "=== AI-Powered Canary Analysis ==="
+          
+          # Simulate ML analyzing canary
+          echo "ML model analyzing canary metrics..."
+          echo "Anomaly score: 0.1 (normal)"
+          echo "Performance impact: minimal"
+          echo "Recommendation: Proceed to production"
+
+  # Deploy to Production
+  deploy-production:
+    name: "Deploy to Production"
+    needs: deploy-canary
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to production
+        run: |
+          echo "=== Deploying to Production ==="
+          
+          echo "Deploying to production..."
+          echo "Deployment successful"
+          
+          echo "Updating load balancer..."
+          echo "Load balancer updated"
+
+      - name: Monitor production deployment
+        run: |
+          echo "=== Monitoring Production Deployment ==="
+          
+          echo "Monitoring for 30 minutes..."
+          
+          # Simulate monitoring
+          for i in {1..30}; do
+            echo "Minute $i: Checking metrics..."
+            echo "  Error rate: 0.1% (normal)"
+            echo "  Latency: 200ms (normal)"
+            echo "  Users affected: 0"
+            sleep 1
+          done
+          
+          echo "Production deployment stable"
+
+      - name: AI-powered production analysis
+        run: |
+          echo "=== AI-Powered Production Analysis ==="
+          
+          # Simulate Claude analyzing production
+          echo "Claude analyzing production deployment..."
+          echo "Performance: Normal"
+          echo "Error rate: Normal"
+          echo "User impact: None"
+          echo "Recommendation: Deployment successful"
+
+      - name: Send deployment notification
+        if: always()
+        run: |
+          echo "=== Sending Deployment Notification ==="
+          
+          curl -X POST "${{ env.SLACK_WEBHOOK_URL }}" \
+            -H 'Content-type: application/json' \
+            -d '{
+              "text": "🚀 *Deployment Successful*\n*Environment:* Production\n*Strategy:* ${{ needs.pre-deployment.outputs.recommended_strategy }}\n*Status:* Live"
+            }'
+
+  # Post-Deployment Analysis
+  post-deployment:
+    name: "Post-Deployment Analysis"
+    needs: deploy-production
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate deployment report
+        run: |
+          echo "=== Generating Deployment Report ==="
+          
+          cat > deployment-report.md << EOF
+          # Deployment Report
+          
+          ## Summary
+          - **Environment:** Production
+          - **Strategy:** ${{ needs.pre-deployment.outputs.recommended_strategy }}
+          - **Status:** Successful
+          - **Duration:** 45 minutes
+          
+          ## Metrics
+          - **Error Rate:** 0.1%
+          - **Latency:** 200ms p95
+          - **Users Affected:** 0
+          
+          ## Analysis
+          - **Performance:** Normal
+          - **Stability:** Stable
+          - **Rollback Needed:** No
+          
+          ## Lessons Learned
+          - Pre-deployment analysis was accurate
+          - Canary monitoring was effective
+          - No issues detected
+          EOF
+
+      - name: Update ML models
+        run: |
+          echo "=== Updating ML Models ==="
+          
+          echo "Updating deployment risk model..."
+          echo "Adding deployment data point..."
+          echo "Model retrained"
+          
+          echo "Updating performance prediction model..."
+          echo "Adding performance data..."
+          echo "Model retrained"
+
+      - name: Update knowledge base
+        run: |
+          echo "=== Updating Knowledge Base ==="
+          
+          echo "Adding deployment to knowledge base..."
+          echo "Updating deployment strategies..."
+          echo "Updating risk assessment criteria..."
