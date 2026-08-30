@@ -1,0 +1,370 @@
+# Alerting Rules for Infrastructure Health Prediction
+# Exercise 3.3: Infrastructure Health Prediction
+
+groups:
+  # Disk Health Alerts
+  - name: disk_health_alerts
+    rules:
+      # Disk space critical
+      - alert: DiskSpaceCritical
+        expr: infra:disk_usage:current > 0.9
+        for: 5m
+        labels:
+          severity: critical
+          category: health
+          service: disk
+        annotations:
+          summary: "Disk space critical"
+          description: |
+            Disk usage is {{ $value | humanizePercentage }}.
+            Instance: {{ $labels.instance }}
+          runbook: "Immediate action required to free disk space"
+
+      # Disk space warning
+      - alert: DiskSpaceWarning
+        expr: infra:disk_usage:current > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          category: health
+          service: disk
+        annotations:
+          summary: "Disk space warning"
+          description: |
+            Disk usage is {{ $value | humanizePercentage }}.
+            Instance: {{ $labels.instance }}
+          runbook: "Consider cleaning up disk space"
+
+      # Disk exhaustion predicted
+      - alert: DiskExhaustionPredicted
+        expr: infra:disk_exhaustion:predicted24h == 1
+        for: 10m
+        labels:
+          severity: critical
+          category: prediction
+          service: disk
+        annotations:
+          summary: "Disk space predicted to be exhausted in 24 hours"
+          description: |
+            Disk space is running low.
+            Instance: {{ $labels.instance }}
+          runbook: "Clean up logs, archives, or add more storage"
+
+      # Disk exhaustion predicted (7 days)
+      - alert: DiskExhaustionPredicted7d
+        expr: infra:disk_exhaustion:predicted7d == 1
+        for: 10m
+        labels:
+          severity: warning
+          category: prediction
+          service: disk
+        annotations:
+          summary: "Disk space predicted to be exhausted in 7 days"
+          description: |
+            Disk space is running low.
+            Instance: {{ $labels.instance }}
+          runbook: "Plan for disk cleanup or expansion"
+
+      # Disk health score low
+      - alert: LowDiskHealthScore
+        expr: infra:disk_health:score < 40
+        for: 10m
+        labels:
+          severity: warning
+          category: health
+          service: disk
+        annotations:
+          summary: "Low disk health score"
+          description: |
+            Disk health score: {{ $value }}/100
+            Instance: {{ $labels.instance }}
+          runbook: "Review disk usage and performance"
+
+  # Network Health Alerts
+  - name: network_health_alerts
+    rules:
+      # Network saturation predicted
+      - alert: NetworkSaturationPredicted
+        expr: infra:network_saturation:predicted1h == 1
+        for: 10m
+        labels:
+          severity: warning
+          category: prediction
+          service: network
+        annotations:
+          summary: "Network predicted to reach saturation in 1 hour"
+          description: |
+            Network utilization is increasing rapidly.
+            Instance: {{ $labels.instance }}
+          runbook: "Consider upgrading network capacity"
+
+      # High network error rate
+      - alert: HighNetworkErrorRate
+        expr: infra:network_errors:rate1m > 0.01
+        for: 5m
+        labels:
+          severity: warning
+          category: health
+          service: network
+        annotations:
+          summary: "High network error rate"
+          description: |
+            Network error rate: {{ $value }} errors/sec
+            Instance: {{ $labels.instance }}
+          runbook: "Check network hardware and cables"
+
+      # Network health score low
+      - alert: LowNetworkHealthScore
+        expr: infra:network_health:score < 40
+        for: 10m
+        labels:
+          severity: warning
+          category: health
+          service: network
+        annotations:
+          summary: "Low network health score"
+          description: |
+            Network health score: {{ $value }}/100
+            Instance: {{ $labels.instance }}
+          runbook: "Review network utilization and errors"
+
+  # CPU Health Alerts
+  - name: cpu_health_alerts
+    rules:
+      # CPU saturation predicted
+      - alert: CpuSaturationPredicted
+        expr: infra:cpu_saturation:predicted1h == 1
+        for: 10m
+        labels:
+          severity: warning
+          category: prediction
+          service: cpu
+        annotations:
+          summary: "CPU predicted to reach saturation in 1 hour"
+          description: |
+            CPU utilization is increasing rapidly.
+            Instance: {{ $labels.instance }}
+          runbook: "Consider scaling or optimizing workload"
+
+      # CPU health score low
+      - alert: LowCpuHealthScore
+        expr: infra:cpu_health:score < 40
+        for: 10m
+        labels:
+          severity: warning
+          category: health
+          service: cpu
+        annotations:
+          summary: "Low CPU health score"
+          description: |
+            CPU health score: {{ $value }}/100
+            Instance: {{ $labels.instance }}
+          runbook: "Review CPU usage and optimize"
+
+  # Memory Health Alerts
+  - name: memory_health_alerts
+    rules:
+      # Memory exhaustion predicted
+      - alert: MemoryExhaustionPredicted
+        expr: infra:memory_exhaustion:predicted4h == 1
+        for: 10m
+        labels:
+          severity: critical
+          category: prediction
+          service: memory
+        annotations:
+          summary: "Memory predicted to be exhausted in 4 hours"
+          description: |
+            Available memory is decreasing rapidly.
+            Instance: {{ $labels.instance }}
+          runbook: "Investigate memory usage, consider adding more memory"
+
+      # Memory health score low
+      - alert: LowMemoryHealthScore
+        expr: infra:memory_health:score < 40
+        for: 10m
+        labels:
+          severity: warning
+          category: health
+          service: memory
+        annotations:
+          summary: "Low memory health score"
+          description: |
+            Memory health score: {{ $value }}/100
+            Instance: {{ $labels.instance }}
+          runbook: "Review memory usage and optimize"
+
+  # Security Health Alerts
+  - name: security_health_alerts
+    rules:
+      # High failed login attempts
+      - alert: HighFailedLogins
+        expr: infra:security:failed_logins:rate1h > 10
+        for: 5m
+        labels:
+          severity: warning
+          category: security
+          service: security
+        annotations:
+          summary: "High failed login attempts"
+          description: |
+            Failed login rate: {{ $value }}/hour
+            Instance: {{ $labels.instance }}
+          runbook: "Review login attempts, check for brute force"
+
+      # Security health score low
+      - alert: LowSecurityHealthScore
+        expr: infra:security_health:score < 40
+        for: 10m
+        labels:
+          severity: warning
+          category: security
+          service: security
+        annotations:
+          summary: "Low security health score"
+          description: |
+            Security health score: {{ $value }}/100
+            Instance: {{ $labels.instance }}
+          runbook: "Review security configuration"
+
+  # Overall Infrastructure Health Alerts
+  - name: infrastructure_health_alerts
+    rules:
+      # Low overall health score
+      - alert: LowInfrastructureHealth
+        expr: infra:health_score_overall:score < 60
+        for: 10m
+        labels:
+          severity: warning
+          category: health
+          service: infrastructure
+        annotations:
+          summary: "Low overall infrastructure health score"
+          description: |
+            Infrastructure health score: {{ $value }}/100
+            Instance: {{ $labels.instance }}
+          runbook: "Review individual component health scores"
+
+      # Critical infrastructure health
+      - alert: CriticalInfrastructureHealth
+        expr: infra:health_score_overall:score < 40
+        for: 5m
+        labels:
+          severity: critical
+          category: health
+          service: infrastructure
+        annotations:
+          summary: "Critical infrastructure health score"
+          description: |
+            Infrastructure health score: {{ $value }}/100
+            Instance: {{ $labels.instance }}
+          runbook: "Immediate investigation required"
+
+      # Health trend declining
+      - alert: HealthTrendDeclining
+        expr: infra:health_trend:trend1h < -5
+        for: 15m
+        labels:
+          severity: warning
+          category: prediction
+          service: infrastructure
+        annotations:
+          summary: "Infrastructure health trend declining"
+          description: |
+            Health trend: {{ $value }} points/hour
+            Instance: {{ $labels.instance }}
+          runbook: "Investigate declining health"
+
+  # Maintenance Alerts
+  - name: maintenance_alerts
+    rules:
+      # Disk maintenance needed
+      - alert: DiskMaintenanceNeeded
+        expr: infra:maintenance:disk_needed == 1
+        for: 1h
+        labels:
+          severity: warning
+          category: maintenance
+          service: disk
+        annotations:
+          summary: "Disk maintenance needed"
+          description: |
+            Disk space is running low.
+            Instance: {{ $labels.instance }}
+          runbook: "Schedule disk cleanup or expansion"
+
+      # Network maintenance needed
+      - alert: NetworkMaintenanceNeeded
+        expr: infra:maintenance:network_needed == 1
+        for: 1h
+        labels:
+          severity: warning
+          category: maintenance
+          service: network
+        annotations:
+          summary: "Network maintenance needed"
+          description: |
+            Network errors detected.
+            Instance: {{ $labels.instance }}
+          runbook: "Schedule network maintenance"
+
+      # Security maintenance needed
+      - alert: SecurityMaintenanceNeeded
+        expr: infra:maintenance:security_needed == 1
+        for: 1h
+        labels:
+          severity: warning
+          category: maintenance
+          service: security
+        annotations:
+          summary: "Security maintenance needed"
+          description: |
+            Security issues detected.
+            Instance: {{ $labels.instance }}
+          runbook: "Schedule security review"
+
+      # High maintenance priority
+      - alert: HighMaintenancePriority
+        expr: infra:maintenance:priority > 0.5
+        for: 1h
+        labels:
+          severity: warning
+          category: maintenance
+          service: infrastructure
+        annotations:
+          summary: "High maintenance priority"
+          description: |
+            Maintenance priority: {{ $value }}
+            Instance: {{ $labels.instance }}
+          runbook: "Schedule maintenance activities"
+
+  # Cost Health Alerts
+  - name: cost_health_alerts
+    rules:
+      # Cost trend increasing
+      - alert: CostTrendIncreasing
+        expr: infra:cost:trend1d > 0
+        for: 1h
+        labels:
+          severity: warning
+          category: cost
+          service: cost
+        annotations:
+          summary: "Cost trend increasing"
+          description: |
+            Daily cost trend: {{ $value }}
+          runbook: "Review cost optimization opportunities"
+
+      # Cost prediction high
+      - alert: CostPredictionHigh
+        expr: infra:cost:predicted30d > 10000
+        for: 1h
+        labels:
+          severity: warning
+          category: cost
+          service: cost
+        annotations:
+          summary: "Cost predicted to be high in 30 days"
+          description: |
+            Predicted 30-day cost: {{ $value }}
+          runbook: "Review cost optimization opportunities"

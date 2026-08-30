@@ -1,0 +1,55 @@
+# Prometheus Configuration for Infrastructure Health Prediction
+# Exercise 3.3: Infrastructure Health Prediction
+
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+scrape_configs:
+  # Node exporter for system metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          service: 'system'
+          environment: 'production'
+
+  # Disk metrics
+  - job_name: 'disk-exporter'
+    static_configs:
+      - targets: ['disk-exporter:9103']
+        labels:
+          service: 'storage'
+          environment: 'production'
+
+  # Network metrics
+  - job_name: 'network-exporter'
+    static_configs:
+      - targets: ['network-exporter:9104']
+        labels:
+          service: 'network'
+          environment: 'production'
+
+  # Hardware metrics
+  - job_name: 'hardware-exporter'
+    static_configs:
+      - targets: ['hardware-exporter:9105']
+        labels:
+          service: 'hardware'
+          environment: 'production'
+
+  # Security metrics
+  - job_name: 'security-exporter'
+    static_configs:
+      - targets: ['security-exporter:9106']
+        labels:
+          service: 'security'
+          environment: 'production'
+
+  # Cost metrics
+  - job_name: 'cost-exporter'
+    static_configs:
+      - targets: ['cost-exporter:9107']
+        labels:
+          service: 'cost'
+          environment: 'production'

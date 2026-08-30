@@ -1,0 +1,323 @@
+# Recording Rules for Infrastructure Health Prediction
+# Exercise 3.3: Infrastructure Health Prediction
+
+groups:
+  # Disk Health Prediction Rules
+  - name: disk_health_prediction
+    interval: 60s
+    rules:
+      # Current disk usage
+      - record: infra:disk_usage:current
+        expr: |
+          1 - (
+            node_filesystem_avail_bytes
+            / node_filesystem_size_bytes
+          )
+
+      # Disk usage trend (1 hour)
+      - record: infra:disk_usage:trend1h
+        expr: |
+          deriv(
+            node_filesystem_avail_bytes[1h]
+          )
+
+      # Disk usage trend (6 hours)
+      - record: infra:disk_usage:trend6h
+        expr: |
+          deriv(
+            node_filesystem_avail_bytes[6h]
+          )
+
+      # Disk exhaustion prediction (24 hours)
+      - record: infra:disk_exhaustion:predicted24h
+        expr: |
+          predict_linear(
+            node_filesystem_avail_bytes[6h], 24 * 3600
+          ) < 0
+
+      # Disk exhaustion prediction (7 days)
+      - record: infra:disk_exhaustion:predicted7d
+        expr: |
+          predict_linear(
+            node_filesystem_avail_bytes[6h], 7 * 24 * 3600
+          ) < 0
+
+      # Days until disk exhaustion
+      - record: infra:disk_exhaustion:days_until
+        expr: |
+          node_filesystem_avail_bytes
+          / (abs deriv(node_filesystem_avail_bytes[6h]) * 86400)
+
+      # Disk I/O health
+      - record: infra:disk_io_health:score
+        expr: |
+          clamp(
+            100 - (
+              rate(node_disk_read_bytes_total[5m])
+              + rate(node_disk_written_bytes_total[5m])
+            ) / 1e9 * 100,
+            0, 100
+          )
+
+      # Disk health score (0-100)
+      - record: infra:disk_health:score
+        expr: |
+          clamp(
+            100 - infra:disk_usage:current * 100,
+            0, 100
+          )
+
+  # Network Health Prediction Rules
+  - name: network_health_prediction
+    interval: 60s
+    rules:
+      # Network utilization
+      - record: infra:network_utilization:current
+        expr: |
+          (
+            rate(node_network_receive_bytes_total[5m])
+            + rate(node_network_transmit_bytes_total[5m])
+          ) / 1e9
+
+      # Network utilization trend
+      - record: infra:network_utilization:trend1h
+        expr: |
+          deriv(
+            (
+              rate(node_network_receive_bytes_total[1h])
+              + rate(node_network_transmit_bytes_total[1h])
+            )
+          )
+
+      # Network saturation prediction
+      - record: infra:network_saturation:predicted1h
+        expr: |
+          predict_linear(
+            (
+              rate(node_network_receive_bytes_total[1h])
+              + rate(node_network_transmit_bytes_total[1h])
+            ),
+            3600
+          ) > 1e9
+
+      # Network error rate
+      - record: infra:network_errors:rate1m
+        expr: |
+          rate(node_network_receive_errs_total[5m])
+          + rate(node_network_transmit_errs_total[5m])
+
+      # Network health score (0-100)
+      - record: infra:network_health:score
+        expr: |
+          clamp(
+            100 - infra:network_utilization:current * 100,
+            0, 100
+          )
+
+  # CPU Health Prediction Rules
+  - name: cpu_health_prediction
+    interval: 60s
+    rules:
+      # CPU utilization
+      - record: infra:cpu_utilization:current
+        expr: |
+          1 - avg by (instance) (
+            rate(node_cpu_seconds_total{mode="idle"}[5m])
+          )
+
+      # CPU utilization trend
+      - record: infra:cpu_utilization:trend1h
+        expr: |
+          deriv(
+            avg by (instance) (
+              rate(node_cpu_seconds_total{mode="idle"}[1h])
+            )
+          )
+
+      # CPU saturation prediction
+      - record: infra:cpu_saturation:predicted1h
+        expr: |
+          predict_linear(
+            avg by (instance) (
+              rate(node_cpu_seconds_total{mode="idle"}[1h])
+            ),
+            3600
+          ) > 0.9
+
+      # CPU load average
+      - record: infra:cpu_load:average
+        expr: |
+          node_load1 / count by (instance) (
+            node_cpu_seconds_total{mode="idle"}
+          )
+
+      # CPU health score (0-100)
+      - record: infra:cpu_health:score
+        expr: |
+          clamp(
+            100 - infra:cpu_utilization:current * 100,
+            0, 100
+          )
+
+  # Memory Health Prediction Rules
+  - name: memory_health_prediction
+    interval: 60s
+    rules:
+      # Memory utilization
+      - record: infra:memory_utilization:current
+        expr: |
+          1 - (
+            node_memory_MemAvailable_bytes
+            / node_memory_MemTotal_bytes
+          )
+
+      # Memory utilization trend
+      - record: infra:memory_utilization:trend1h
+        expr: |
+          deriv(
+            1 - (
+              node_memory_MemAvailable_bytes
+              / node_memory_MemTotal_bytes
+            )
+          )
+
+      # Memory exhaustion prediction
+      - record: infra:memory_exhaustion:predicted4h
+        expr: |
+          predict_linear(
+            node_memory_MemAvailable_bytes[1h],
+            4 * 3600
+          ) < 0
+
+      # Memory health score (0-100)
+      - record: infra:memory_health:score
+        expr: |
+          clamp(
+            100 - infra:memory_utilization:current * 100,
+            0, 100
+          )
+
+  # Security Health Prediction Rules
+  - name: security_health_prediction
+    interval: 300s
+    rules:
+      # Failed login attempts
+      - record: infra:security:failed_logins:rate1h
+        expr: |
+          increase(node_systemd_unit_state_state{state="failed"}[1h])
+
+      # Open ports
+      - record: infra:security:open_ports:count
+        expr: |
+          count by (instance) (
+            node_netstat_Tcp_CurrEstab
+          )
+
+      # Security health score (0-100)
+      - record: infra:security_health:score
+        expr: |
+          clamp(
+            100 - infra:security:failed_logins:rate1h * 10,
+            0, 100
+          )
+
+  # Cost Health Prediction Rules
+  - name: cost_health_prediction
+    interval: 3600s
+    rules:
+      # Cost trend
+      - record: infra:cost:trend1d
+        expr: |
+          deriv(
+            aws_billing_total_cost_amount[1d]
+          )
+
+      # Cost prediction (30 days)
+      - record: infra:cost:predicted30d
+        expr: |
+          predict_linear(
+            aws_billing_total_cost_amount[1d],
+            30 * 24 * 3600
+          )
+
+      # Cost health score (0-100)
+      - record: infra:cost_health:score
+        expr: |
+          clamp(
+            100 - infra:cost:trend1d * 100,
+            0, 100
+          )
+
+  # Overall Infrastructure Health Rules
+  - name: infrastructure_health
+    interval: 60s
+    rules:
+      # Component health scores
+      - record: infra:health_score_cpu:score
+        expr: infra:cpu_health:score
+
+      - record: infra:health_score_memory:score
+        expr: infra:memory_health:score
+
+      - record: infra:health_score_disk:score
+        expr: infra:disk_health:score
+
+      - record: infra:health_score_network:score
+        expr: infra:network_health:score
+
+      - record: infra:health_score_security:score
+        expr: infra:security_health:score
+
+      # Overall health score (weighted)
+      - record: infra:health_score_overall:score
+        expr: |
+          (
+            infra:health_score_cpu:score * 0.2
+            + infra:health_score_memory:score * 0.2
+            + infra:health_score_disk:score * 0.3
+            + infra:health_score_network:score * 0.2
+            + infra:health_score_security:score * 0.1
+          )
+
+      # Health trend
+      - record: infra:health_trend:trend1h
+        expr: |
+          deriv(
+            infra:health_score_overall:score[1h]
+          )
+
+      # Health prediction (24 hours)
+      - record: infra:health_prediction:predicted24h
+        expr: |
+          predict_linear(
+            infra:health_score_overall:score[6h],
+            24 * 3600
+          )
+
+  # Maintenance Prediction Rules
+  - name: maintenance_prediction
+    interval: 3600s
+    rules:
+      # Disk maintenance needed
+      - record: infra:maintenance:disk_needed
+        expr: |
+          infra:disk_exhaustion:days_until < 7
+
+      # Network maintenance needed
+      - record: infra:maintenance:network_needed
+        expr: |
+          infra:network_errors:rate1m > 0.01
+
+      # Security maintenance needed
+      - record: infra:maintenance:security_needed
+        expr: |
+          infra:security:failed_logins:rate1h > 10
+
+      # Overall maintenance priority
+      - record: infra:maintenance:priority
+        expr: |
+          (
+            infra:maintenance:disk_needed * 0.4
+            + infra:maintenance:network_needed * 0.3
+            + infra:maintenance:security_needed * 0.3
+          )

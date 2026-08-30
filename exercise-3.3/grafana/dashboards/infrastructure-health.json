@@ -1,0 +1,474 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Infrastructure Health Prediction Dashboard - Exercise 3.3",
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Overall Infrastructure Health",
+      "type": "gauge",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "infra:health_score_overall:score",
+          "legendFormat": "Overall Health",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 40 },
+              { "color": "yellow", "value": 60 },
+              { "color": "green", "value": 80 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "CPU Health",
+      "type": "gauge",
+      "gridPos": { "h": 6, "w": 4, "x": 6, "y": 0 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "infra:cpu_health:score",
+          "legendFormat": "CPU",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 40 },
+              { "color": "yellow", "value": 60 },
+              { "color": "green", "value": 80 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Memory Health",
+      "type": "gauge",
+      "gridPos": { "h": 6, "w": 4, "x": 10, "y": 0 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "infra:memory_health:score",
+          "legendFormat": "Memory",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 40 },
+              { "color": "yellow", "value": 60 },
+              { "color": "green", "value": 80 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Disk Health",
+      "type": "gauge",
+      "gridPos": { "h": 6, "w": 4, "x": 14, "y": 0 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "infra:disk_health:score",
+          "legendFormat": "Disk",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 40 },
+              { "color": "yellow", "value": 60 },
+              { "color": "green", "value": 80 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Network Health",
+      "type": "gauge",
+      "gridPos": { "h": 6, "w": 4, "x": 18, "y": 0 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "infra:network_health:score",
+          "legendFormat": "Network",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 40 },
+              { "color": "yellow", "value": 60 },
+              { "color": "green", "value": 80 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Security Health",
+      "type": "gauge",
+      "gridPos": { "h": 6, "w": 4, "x": 22, "y": 0 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "infra:security_health:score",
+          "legendFormat": "Security",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 40 },
+              { "color": "yellow", "value": 60 },
+              { "color": "green", "value": 80 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Health Score Trend (7 days)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 6 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "infra:health_score_overall:score",
+          "legendFormat": "Overall",
+          "refId": "A"
+        },
+        {
+          "expr": "infra:cpu_health:score",
+          "legendFormat": "CPU",
+          "refId": "B"
+        },
+        {
+          "expr": "infra:memory_health:score",
+          "legendFormat": "Memory",
+          "refId": "C"
+        },
+        {
+          "expr": "infra:disk_health:score",
+          "legendFormat": "Disk",
+          "refId": "D"
+        },
+        {
+          "expr": "infra:network_health:score",
+          "legendFormat": "Network",
+          "refId": "E"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 40 },
+              { "color": "yellow", "value": 60 },
+              { "color": "green", "value": 80 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Disk Usage Prediction",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "infra:disk_usage:current * 100",
+          "legendFormat": "Current Usage",
+          "refId": "A"
+        },
+        {
+          "expr": "predict_linear(node_filesystem_avail_bytes[6h], 24 * 3600) / node_filesystem_size_bytes * 100",
+          "legendFormat": "Predicted (24h)",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 20
+          }
+        }
+      }
+    },
+    {
+      "title": "Days Until Disk Exhaustion",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "infra:disk_exhaustion:days_until",
+          "legendFormat": "Days Until Exhaustion",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "d",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 7 },
+              { "color": "yellow", "value": 14 },
+              { "color": "green", "value": 30 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "CPU Utilization Prediction",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 22 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "infra:cpu_utilization:current * 100",
+          "legendFormat": "Current Utilization",
+          "refId": "A"
+        },
+        {
+          "expr": "predict_linear(infra:cpu_utilization:current[1h], 3600) * 100",
+          "legendFormat": "Predicted (1h)",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 20
+          }
+        }
+      }
+    },
+    {
+      "title": "Memory Utilization Prediction",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 22 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "infra:memory_utilization:current * 100",
+          "legendFormat": "Current Utilization",
+          "refId": "A"
+        },
+        {
+          "expr": "predict_linear(infra:memory_utilization:current[1h], 4 * 3600) * 100",
+          "legendFormat": "Predicted (4h)",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 20
+          }
+        }
+      }
+    },
+    {
+      "title": "Network Utilization",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 30 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "infra:network_utilization:current * 100",
+          "legendFormat": "Current Utilization",
+          "refId": "A"
+        },
+        {
+          "expr": "infra:network_errors:rate1m",
+          "legendFormat": "Error Rate",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        }
+      }
+    },
+    {
+      "title": "Security Metrics",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 30 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "infra:security:failed_logins:rate1h",
+          "legendFormat": "Failed Logins",
+          "refId": "A"
+        },
+        {
+          "expr": "infra:security_health:score",
+          "legendFormat": "Security Health",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        }
+      }
+    },
+    {
+      "title": "Maintenance Schedule",
+      "type": "table",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 38 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "ALERTS{category=\"maintenance\"}",
+          "legendFormat": "{{alertname}}",
+          "refId": "A",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        }
+      }
+    },
+    {
+      "title": "Cost Optimization",
+      "type": "table",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 38 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "ALERTS{category=\"cost\"}",
+          "legendFormat": "{{alertname}}",
+          "refId": "A",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        }
+      }
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 32,
+  "style": "dark",
+  "tags": ["infrastructure", "health", "prediction", "monitoring"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "title": "Infrastructure Health Prediction Dashboard",
+  "uid": "infra-health-prediction-001",
+  "version": 1
+}
