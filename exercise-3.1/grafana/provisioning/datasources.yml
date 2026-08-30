@@ -1,0 +1,58 @@
+# Grafana Provisioning Configuration
+# Exercise 3.1: Enterprise Anomaly Detection System
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: true
+
+  - name: Alertmanager
+    type: alertmanager
+    access: proxy
+    url: http://alertmanager:9093
+    editable: true
+    jsonData:
+      implementation: prometheus
+
+  - name: Grafana-ML
+    type: grafana-ml-app
+    access: proxy
+    url: http://grafana-ml:3000
+    editable: true
+
+dashboards:
+  default:
+    gnetId: null
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false
+    provider:
+      name: default
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: false
+      updateIntervalSeconds: 30
+      allowUiUpdates: true
+
+alerting:
+  enabled: true
+
+unified_alerting:
+  enabled: true
+
+panels:
+  # Enable ML panels
+  enable_acceleration: true
+  enable_ml_correlations: true

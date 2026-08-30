@@ -1,0 +1,262 @@
+# Recording Rules for Anomaly Detection
+# Exercise 3.1: Enterprise Anomaly Detection System
+
+groups:
+  # CPU Anomaly Detection Rules
+  - name: cpu_anomaly_detection
+    interval: 30s
+    rules:
+      # Calculate CPU usage rate
+      - record: node:cpu_usage_rate:avg5m
+        expr: |
+          1 - avg by (instance) (
+            rate(node_cpu_seconds_total{mode="idle"}[5m])
+          )
+
+      # Calculate CPU usage standard deviation
+      - record: node:cpu_usage_stddev:avg1h
+        expr: |
+          stddev_over_time(
+            node:cpu_usage_rate:avg5m[1h]
+          )
+
+      # Calculate CPU usage mean
+      - record: node:cpu_usage_mean:avg1h
+        expr: |
+          avg_over_time(
+            node:cpu_usage_rate:avg5m[1h]
+          )
+
+      # Calculate CPU Z-score (anomaly score)
+      - record: node:cpu_anomaly_score:zscore
+        expr: |
+          (
+            node:cpu_usage_rate:avg5m
+            - node:cpu_usage_mean:avg1h
+          ) / (node:cpu_usage_stddev:avg1h > 0 or on() vector(1))
+
+      # Detect CPU spike (3 standard deviations)
+      - record: node:cpu_spike:detected
+        expr: |
+          node:cpu_anomaly_score:zscore > 3
+
+  # Memory Anomaly Detection Rules
+  - name: memory_anomaly_detection
+    interval: 30s
+    rules:
+      # Calculate memory usage rate
+      - record: node:memory_usage_rate:avg5m
+        expr: |
+          1 - (
+            node_memory_MemAvailable_bytes
+            / node_memory_MemTotal_bytes
+          )
+
+      # Calculate memory usage standard deviation
+      - record: node:memory_usage_stddev:avg1h
+        expr: |
+          stddev_over_time(
+            node:memory_usage_rate:avg5m[1h]
+          )
+
+      # Calculate memory usage mean
+      - record: node:memory_usage_mean:avg1h
+        expr: |
+          avg_over_time(
+            node:memory_usage_rate:avg5m[1h]
+          )
+
+      # Calculate memory Z-score (anomaly score)
+      - record: node:memory_anomaly_score:zscore
+        expr: |
+          (
+            node:memory_usage_rate:avg5m
+            - node:memory_usage_mean:avg1h
+          ) / (node:memory_usage_stddev:avg1h > 0 or on() vector(1))
+
+      # Detect memory leak (sustained increase)
+      - record: node:memory_leak:detected
+        expr: |
+          (
+            node:memory_usage_rate:avg5m
+            - node_memory_usage_rate:avg5m offset 1h
+          ) > 0.1
+
+  # Disk Anomaly Detection Rules
+  - name: disk_anomaly_detection
+    interval: 30s
+    rules:
+      # Calculate disk usage rate
+      - record: node:disk_usage_rate:avg5m
+        expr: |
+          1 - (
+            node_filesystem_avail_bytes
+            / node_filesystem_size_bytes
+          )
+
+      # Calculate disk I/O rate
+      - record: node:disk_io_rate:avg5m
+        expr: |
+          rate(node_disk_read_bytes_total[5m])
+          + rate(node_disk_written_bytes_total[5m])
+
+      # Calculate disk I/O standard deviation
+      - record: node:disk_io_stddev:avg1h
+        expr: |
+          stddev_over_time(
+            node:disk_io_rate:avg5m[1h]
+          )
+
+      # Calculate disk I/O mean
+      - record: node:disk_io_mean:avg1h
+        expr: |
+          avg_over_time(
+            node:disk_io_rate:avg5m[1h]
+          )
+
+      # Calculate disk I/O Z-score (anomaly score)
+      - record: node:disk_io_anomaly_score:zscore
+        expr: |
+          (
+            node:disk_io_rate:avg5m
+            - node:disk_io_mean:avg1h
+          ) / (node:disk_io_stddev:avg1h > 0 or on() vector(1))
+
+      # Detect disk space exhaustion (predict in 24h)
+      - record: node:disk_exhaustion:predicted24h
+        expr: |
+          predict_linear(
+            node_filesystem_avail_bytes[6h], 24 * 3600
+          ) < 0
+
+  # Network Anomaly Detection Rules
+  - name: network_anomaly_detection
+    interval: 30s
+    rules:
+      # Calculate network receive rate
+      - record: node:network_rx_rate:avg5m
+        expr: |
+          rate(node_network_receive_bytes_total[5m])
+
+      # Calculate network transmit rate
+      - record: node:network_tx_rate:avg5m
+        expr: |
+          rate(node_network_transmit_bytes_total[5m])
+
+      # Calculate network total rate
+      - record: node:network_total_rate:avg5m
+        expr: |
+          node:network_rx_rate:avg5m + node:network_tx_rate:avg5m
+
+      # Calculate network rate standard deviation
+      - record: node:network_total_stddev:avg1h
+        expr: |
+          stddev_over_time(
+            node:network_total_rate:avg5m[1h]
+          )
+
+      # Calculate network rate mean
+      - record: node:network_total_mean:avg1h
+        expr: |
+          avg_over_time(
+            node:network_total_rate:avg5m[1h]
+          )
+
+      # Calculate network Z-score (anomaly score)
+      - record: node:network_anomaly_score:zscore
+        expr: |
+          (
+            node:network_total_rate:avg5m
+            - node:network_total_mean:avg1h
+          ) / (node:network_total_stddev:avg1h > 0 or on() vector(1))
+
+      # Detect network spike (3 standard deviations)
+      - record: node:network_spike:detected
+        expr: |
+          node:network_anomaly_score:zscore > 3
+
+  # Application Anomaly Detection Rules
+  - name: app_anomaly_detection
+    interval: 30s
+    rules:
+      # Calculate HTTP request rate
+      - record: app:http_requests_rate:avg5m
+        expr: |
+          rate(http_requests_total[5m])
+
+      # Calculate HTTP error rate
+      - record: app:http_errors_rate:avg5m
+        expr: |
+          rate(http_requests_total{status=~"5.."}[5m])
+          / rate(http_requests_total[5m])
+
+      # Calculate response time p95
+      - record: app:response_time_p95:avg5m
+        expr: |
+          histogram_quantile(0.95,
+            rate(http_request_duration_seconds_bucket[5m])
+          )
+
+      # Calculate response time standard deviation
+      - record: app:response_time_stddev:avg1h
+        expr: |
+          stddev_over_time(
+            app:response_time_p95:avg5m[1h]
+          )
+
+      # Calculate response time mean
+      - record: app:response_time_mean:avg1h
+        expr: |
+          avg_over_time(
+            app:response_time_p95:avg5m[1h]
+          )
+
+      # Calculate response time Z-score (anomaly score)
+      - record: app:response_time_anomaly_score:zscore
+        expr: |
+          (
+            app:response_time_p95:avg5m
+            - app:response_time_mean:avg1h
+          ) / (app:response_time_stddev:avg1h > 0 or on() vector(1))
+
+      # Detect response time anomaly (2 standard deviations)
+      - record: app:response_time_anomaly:detected
+        expr: |
+          app:response_time_anomaly_score:zscore > 2
+
+  # Health Scoring Rules
+  - name: health_scoring
+    interval: 60s
+    rules:
+      # Calculate CPU health score (0-100)
+      - record: node:health_score_cpu:score
+        expr: |
+          clamp(
+            100 - (node:cpu_usage_rate:avg5m * 100),
+            0, 100
+          )
+
+      # Calculate memory health score (0-100)
+      - record: node:health_score_memory:score
+        expr: |
+          clamp(
+            100 - (node:memory_usage_rate:avg5m * 100),
+            0, 100
+          )
+
+      # Calculate disk health score (0-100)
+      - record: node:health_score_disk:score
+        expr: |
+          clamp(
+            100 - (node:disk_usage_rate:avg5m * 100),
+            0, 100
+          )
+
+      # Calculate overall health score (weighted average)
+      - record: node:health_score_overall:score
+        expr: |
+          (
+            node:health_score_cpu:score * 0.3
+            + node:health_score_memory:score * 0.3
+            + node:health_score_disk:score * 0.4
+          )

@@ -1,0 +1,280 @@
+# Intelligent Alerting Rules for Anomaly Detection
+# Exercise 3.1: Enterprise Anomaly Detection System
+
+groups:
+  # CPU Anomaly Alerts
+  - name: cpu_anomaly_alerts
+    rules:
+      # High CPU anomaly score
+      - alert: HighCpuAnomalyScore
+        expr: node:cpu_anomaly_score:zscore > 2.5
+        for: 5m
+        labels:
+          severity: warning
+          category: anomaly
+          service: cpu
+        annotations:
+          summary: "High CPU anomaly score detected"
+          description: |
+            CPU usage is {{ $value | humanize }} standard deviations above mean.
+            Instance: {{ $labels.instance }}
+            Current CPU usage: {{ with query "node:cpu_usage_rate:avg5m{instance='{{ $labels.instance }}'}" }}{{ . | first | value | humanizePercentage }}{{ end }}
+          runbook: "Check for runaway processes or unexpected load"
+
+      # Critical CPU spike
+      - alert: CriticalCpuSpike
+        expr: node:cpu_spike:detected == 1
+        for: 2m
+        labels:
+          severity: critical
+          category: anomaly
+          service: cpu
+        annotations:
+          summary: "Critical CPU spike detected"
+          description: |
+            CPU spike detected (3+ standard deviations).
+            Instance: {{ $labels.instance }}
+            Current CPU usage: {{ with query "node:cpu_usage_rate:avg5m{instance='{{ $labels.instance }}'}" }}{{ . | first | value | humanizePercentage }}{{ end }}
+          runbook: "Investigate immediately, check for DDoS or runaway processes"
+
+      # CPU usage prediction
+      - alert: CpuUsagePrediction
+        expr: predict_linear(node:cpu_usage_rate:avg5m[1h], 3600) > 0.9
+        for: 10m
+        labels:
+          severity: warning
+          category: prediction
+          service: cpu
+        annotations:
+          summary: "CPU usage predicted to exceed 90% in 1 hour"
+          description: |
+            Predicted CPU usage in 1 hour: {{ $value | humanizePercentage }}
+            Instance: {{ $labels.instance }}
+          runbook: "Consider scaling or optimizing workload"
+
+  # Memory Anomaly Alerts
+  - name: memory_anomaly_alerts
+    rules:
+      # High memory anomaly score
+      - alert: HighMemoryAnomalyScore
+        expr: node:memory_anomaly_score:zscore > 2.5
+        for: 5m
+        labels:
+          severity: warning
+          category: anomaly
+          service: memory
+        annotations:
+          summary: "High memory anomaly score detected"
+          description: |
+            Memory usage is {{ $value | humanize }} standard deviations above mean.
+            Instance: {{ $labels.instance }}
+          runbook: "Check for memory leaks or unexpected allocations"
+
+      # Memory leak detection
+      - alert: MemoryLeakDetected
+        expr: node:memory_leak:detected == 1
+        for: 15m
+        labels:
+          severity: warning
+          category: anomaly
+          service: memory
+        annotations:
+          summary: "Potential memory leak detected"
+          description: |
+            Memory usage has increased by {{ $value | humanizePercentage }} in the last hour.
+            Instance: {{ $labels.instance }}
+          runbook: "Profile application memory usage, check for leaks"
+
+      # Memory exhaustion prediction
+      - alert: MemoryExhaustionPrediction
+        expr: predict_linear(node_memory_MemAvailable_bytes[6h], 3600 * 4) < 0
+        for: 10m
+        labels:
+          severity: critical
+          category: prediction
+          service: memory
+        annotations:
+          summary: "Memory predicted to be exhausted in 4 hours"
+          description: |
+            Available memory is decreasing rapidly.
+            Instance: {{ $labels.instance }}
+          runbook: "Investigate memory usage, consider adding more memory"
+
+  # Disk Anomaly Alerts
+  - name: disk_anomaly_alerts
+    rules:
+      # High disk I/O anomaly score
+      - alert: HighDiskIoAnomalyScore
+        expr: node:disk_io_anomaly_score:zscore > 2.5
+        for: 5m
+        labels:
+          severity: warning
+          category: anomaly
+          service: disk
+        annotations:
+          summary: "High disk I/O anomaly score detected"
+          description: |
+            Disk I/O is {{ $value | humanize }} standard deviations above mean.
+            Instance: {{ $labels.instance }}
+          runbook: "Check for heavy I/O operations or disk thrashing"
+
+      # Disk space exhaustion prediction
+      - alert: DiskSpaceExhaustionPrediction
+        expr: node:disk_exhaustion:predicted24h == 1
+        for: 10m
+        labels:
+          severity: critical
+          category: prediction
+          service: disk
+        annotations:
+          summary: "Disk space predicted to be exhausted in 24 hours"
+          description: |
+            Disk space is running low.
+            Instance: {{ $labels.instance }}
+            Mountpoint: {{ $labels.mountpoint }}
+          runbook: "Clean up logs, archives, or add more storage"
+
+      # Disk space critical
+      - alert: DiskSpaceCritical
+        expr: node:disk_usage_rate:avg5m > 0.9
+        for: 5m
+        labels:
+          severity: critical
+          category: threshold
+          service: disk
+        annotations:
+          summary: "Disk space critical (>90% used)"
+          description: |
+            Disk usage is {{ $value | humanizePercentage }}.
+            Instance: {{ $labels.instance }}
+            Mountpoint: {{ $labels.mountpoint }}
+          runbook: "Immediate action required to free disk space"
+
+  # Network Anomaly Alerts
+  - name: network_anomaly_alerts
+    rules:
+      # High network anomaly score
+      - alert: HighNetworkAnomalyScore
+        expr: node:network_anomaly_score:zscore > 2.5
+        for: 5m
+        labels:
+          severity: warning
+          category: anomaly
+          service: network
+        annotations:
+          summary: "High network anomaly score detected"
+          description: |
+            Network traffic is {{ $value | humanize }} standard deviations above mean.
+            Instance: {{ $labels.instance }}
+          runbook: "Check for DDoS, large transfers, or unexpected traffic"
+
+      # Network spike detected
+      - alert: NetworkSpikeDetected
+        expr: node:network_spike:detected == 1
+        for: 2m
+        labels:
+          severity: warning
+          category: anomaly
+          service: network
+        annotations:
+          summary: "Network spike detected"
+          description: |
+            Network traffic spike (3+ standard deviations).
+            Instance: {{ $labels.instance }}
+          runbook: "Investigate source of traffic spike"
+
+      # Network saturation prediction
+      - alert: NetworkSaturationPrediction
+        expr: |
+          predict_linear(
+            node:network_total_rate:avg5m[1h], 3600
+          ) > 1e9
+        for: 10m
+        labels:
+          severity: warning
+          category: prediction
+          service: network
+        annotations:
+          summary: "Network predicted to reach 1Gbps in 1 hour"
+          description: |
+            Predicted network rate: {{ $value | humanize }}Bps
+            Instance: {{ $labels.instance }}
+          runbook: "Consider upgrading network capacity"
+
+  # Application Anomaly Alerts
+  - name: app_anomaly_alerts
+    rules:
+      # High response time anomaly score
+      - alert: HighResponseTimeAnomalyScore
+        expr: app:response_time_anomaly_score:zscore > 2
+        for: 5m
+        labels:
+          severity: warning
+          category: anomaly
+          service: application
+        annotations:
+          summary: "High response time anomaly score detected"
+          description: |
+            Response time is {{ $value | humanize }} standard deviations above mean.
+          runbook: "Check application performance, database queries"
+
+      # Response time anomaly detected
+      - alert: ResponseTimeAnomalyDetected
+        expr: app:response_time_anomaly:detected == 1
+        for: 3m
+        labels:
+          severity: critical
+          category: anomaly
+          service: application
+        annotations:
+          summary: "Response time anomaly detected"
+          description: |
+            Response time is significantly higher than normal.
+          runbook: "Investigate application performance issues"
+
+      # High error rate anomaly
+      - alert: HighErrorRateAnomaly
+        expr: app:http_errors_rate:avg5m > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          category: threshold
+          service: application
+        annotations:
+          summary: "High HTTP error rate detected"
+          description: |
+            HTTP error rate is {{ $value | humanizePercentage }}.
+          runbook: "Check application logs, investigate errors"
+
+  # Health Score Alerts
+  - name: health_score_alerts
+    rules:
+      # Low overall health score
+      - alert: LowOverallHealthScore
+        expr: node:health_score_overall:score < 60
+        for: 10m
+        labels:
+          severity: warning
+          category: health
+          service: infrastructure
+        annotations:
+          summary: "Overall infrastructure health score is low"
+          description: |
+            Health score: {{ $value | humanize }}/100
+            Instance: {{ $labels.instance }}
+          runbook: "Review individual component health scores"
+
+      # Critical health score
+      - alert: CriticalHealthScore
+        expr: node:health_score_overall:score < 40
+        for: 5m
+        labels:
+          severity: critical
+          category: health
+          service: infrastructure
+        annotations:
+          summary: "Critical infrastructure health score"
+          description: |
+            Health score: {{ $value | humanize }}/100
+            Instance: {{ $labels.instance }}
+          runbook: "Immediate investigation required"

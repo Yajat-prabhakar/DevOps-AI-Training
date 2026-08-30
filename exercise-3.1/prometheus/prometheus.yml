@@ -1,0 +1,91 @@
+# Prometheus Configuration for Anomaly Detection
+# Exercise 3.1: Enterprise Anomaly Detection System
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Load rules
+rule_files:
+  - "rules/*.yml"
+
+# Scrape configs
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+
+  # Application metrics
+  - job_name: 'app-backend'
+    static_configs:
+      - targets: ['backend:8000']
+        labels:
+          service: 'backend'
+          environment: 'production'
+
+  # Frontend metrics
+  - job_name: 'app-frontend'
+    static_configs:
+      - targets: ['frontend:80']
+        labels:
+          service: 'frontend'
+          environment: 'production'
+
+  # Database metrics
+  - job_name: 'postgresql'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          service: 'database'
+          environment: 'production'
+
+  # Redis metrics
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+        labels:
+          service: 'redis'
+          environment: 'production'
+
+  # Node exporter for system metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          service: 'system'
+          environment: 'production'
+
+  # Docker container metrics
+  - job_name: 'docker'
+    static_configs:
+      - targets: ['docker-exporter:9323']
+        labels:
+          service: 'docker'
+          environment: 'production'
+
+  # Kubernetes metrics
+  - job_name: 'kubernetes'
+    static_configs:
+      - targets: ['kube-state-metrics:8080']
+        labels:
+          service: 'kubernetes'
+          environment: 'production'
+
+  # Grafana ML metrics
+  - job_name: 'grafana-ml'
+    static_configs:
+      - targets: ['grafana-ml:3000']
+        labels:
+          service: 'grafana-ml'
+          environment: 'production'

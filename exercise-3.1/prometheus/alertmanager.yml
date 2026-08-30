@@ -1,0 +1,90 @@
+# Alertmanager Configuration
+# Exercise 3.1: Enterprise Anomaly Detection System
+
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'alerts@devops-training.com'
+  smtp_auth_username: ''
+  smtp_auth_password: ''
+  smtp_require_tls: true
+
+# Inhibition rules
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']
+
+# Route configuration
+route:
+  receiver: 'default'
+  group_by: ['alertname', 'instance']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  
+  routes:
+    # Critical alerts
+    - match:
+        severity: 'critical'
+      receiver: 'critical'
+      group_wait: 10s
+      group_interval: 1m
+      repeat_interval: 1h
+    
+    # Anomaly alerts
+    - match:
+        category: 'anomaly'
+      receiver: 'anomaly'
+      group_wait: 30s
+      group_interval: 2m
+      repeat_interval: 2h
+    
+    # Prediction alerts
+    - match:
+        category: 'prediction'
+      receiver: 'prediction'
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+    
+    # Health score alerts
+    - match:
+        category: 'health'
+      receiver: 'health'
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+
+# Receivers
+receivers:
+  - name: 'default'
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook'
+        send_resolved: true
+  
+  - name: 'critical'
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook/critical'
+        send_resolved: true
+  
+  - name: 'anomaly'
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook/anomaly'
+        send_resolved: true
+  
+  - name: 'prediction'
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook/prediction'
+        send_resolved: true
+  
+  - name: 'health'
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook/health'
+        send_resolved: true
+
+# Templates
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
