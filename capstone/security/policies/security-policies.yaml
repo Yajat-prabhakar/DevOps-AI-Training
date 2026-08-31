@@ -1,0 +1,221 @@
+# Security Policies - Capstone Project
+# Enterprise DevOps Observability Platform
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: security-policies
+  namespace: devops-platform
+data:
+  # Network Policies
+  network-policies.yaml: |
+    apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: default-deny-all
+      namespace: devops-platform
+    spec:
+      podSelector: {}
+      policyTypes:
+        - Ingress
+        - Egress
+
+  # Pod Security Policies
+  pod-security.yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: security-check
+      namespace: devops-platform
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 2000
+      containers:
+        - name: security-check
+          image: alpine:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
+  # RBAC Policies
+  rbac-policies.yaml: |
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: developer-role
+      namespace: devops-platform
+    rules:
+      - apiGroups: ["", "apps", "batch"]
+        resources: ["pods", "deployments", "services", "configmaps", "secrets"]
+        verbs: ["get", "list", "watch"]
+      - apiGroups: [""]
+        resources: ["pods/log"]
+        verbs: ["get"]
+
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: developer-rolebinding
+      namespace: devops-platform
+    subjects:
+      - kind: Group
+        name: developers
+        apiGroup: rbac.authorization.k8s.io
+    roleRef:
+      kind: Role
+      name: developer-role
+      apiGroup: rbac.authorization.k8s.io
+
+  # Security Scanning
+  security-scan.yaml: |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: security-scanner
+      namespace: devops-platform
+    spec:
+      containers:
+        - name: trivy-scanner
+          image: aquasec/trivy:latest
+          command: ["trivy", "image"]
+          args: ["--severity", "HIGH,CRITICAL", "--exit-code", "1"]
+          volumeMounts:
+            - name: docker-sock
+              mountPath: /var/run/docker.sock
+      volumes:
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock
+            type: Socket
+
+  # Compliance Checks
+  compliance-checks.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: compliance-checks
+      namespace: devops-platform
+    data:
+      cis-benchmark.yaml: |
+        checks:
+          - id: "1.1"
+            name: "Ensure that the cluster-admin role is only used where required"
+            description: "The cluster-admin role should only be used for critical system operations"
+          - id: "1.2"
+            name: "Minimize access to secrets"
+            description: "Access to secrets should be minimized and logged"
+          - id: "1.3"
+            name: "Minimize wildcard use in Roles and ClusterRoles"
+            description: "Wildcard permissions should be avoided"
+          - id: "2.1"
+            name: "Minimize the admission of privileged containers"
+            description: "Privileged containers should be restricted"
+          - id: "2.2"
+            name: "Minimize the admission of containers wishing to share the host process ID namespace"
+            description: "Host PID namespace sharing should be restricted"
+
+  # Threat Detection
+  threat-detection.yaml: |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: threat-detection
+      namespace: devops-platform
+    data:
+      rules.yaml: |
+        - name: "Privileged Container Detection"
+          condition: "container.securityContext.privileged == true"
+          severity: "critical"
+          action: "alert"
+        - name: "Host Network Detection"
+          condition: "pod.spec.hostNetwork == true"
+          severity: "high"
+          action: "alert"
+        - name: "Host Path Mount Detection"
+          condition: "volume.hostPath is not null"
+          severity: "medium"
+          action: "alert"
+        - name: "Container Running as Root"
+          condition: "container.securityContext.runAsUser == 0"
+          severity: "high"
+          action: "alert"
+
+---
+# Network Policies
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-all-ingress
+  namespace: devops-platform
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-all-egress
+  namespace: devops-platform
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+
+---
+# RBAC
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: security-admin
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "configmaps", "secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: security-admin-binding
+subjects:
+  - kind: Group
+    name: security-team
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: security-admin
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Security Context Constraints
+apiVersion: v1
+kind: SecurityContextConstraints
+metadata:
+  name: restricted-scc
+allowPrivilegedContainer: false
+allowPrivilegeEscalation: false
+requiredDropCapabilities:
+  - ALL
+runAsUser:
+  type: MustRunAsRange
+seLinuxContext:
+  type: MustRunAs
+fsGroup:
+  type: MustRunAs
+supplementalGroups:
+  type: RunAsAny
+readOnlyRootFilesystem: true

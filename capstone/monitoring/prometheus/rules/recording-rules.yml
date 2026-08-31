@@ -1,0 +1,145 @@
+# Recording Rules - Capstone Project
+# Enterprise DevOps Observability Platform
+
+groups:
+  # Infrastructure Metrics
+  - name: infrastructure_recording_rules
+    interval: 30s
+    rules:
+      # CPU Usage
+      - record: cluster:cpu_usage_percent
+        expr: |
+          100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+
+      # Memory Usage
+      - record: cluster:memory_usage_percent
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100
+
+      # Disk Usage
+      - record: cluster:disk_usage_percent
+        expr: |
+          (1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxd"} / node_filesystem_size_bytes{fstype!~"tmpfs|fuse.lxd"})) * 100
+
+      # Network I/O
+      - record: cluster:network_bytes_received
+        expr: |
+          rate(node_network_receive_bytes_total[5m])
+
+      - record: cluster:network_bytes_sent
+        expr: |
+          rate(node_network_transmit_bytes_total[5m])
+
+  # Kubernetes Metrics
+  - name: kubernetes_recording_rules
+    interval: 30s
+    rules:
+      # Pod Count
+      - record: cluster:pod_count
+        expr: |
+          count(kube_pod_info)
+
+      # Running Pods
+      - record: cluster:pod_running
+        expr: |
+          sum(kube_pod_status_phase{phase="Running"})
+
+      # Failed Pods
+      - record: cluster:pod_failed
+        expr: |
+          sum(kube_pod_status_phase{phase="Failed"})
+
+      # Pending Pods
+      - record: cluster:pod_pending
+        expr: |
+          sum(kube_pod_status_phase{phase="Pending"})
+
+      # Pod Restarts
+      - record: cluster:pod_restarts
+        expr: |
+          sum(kube_pod_container_status_restarts_total)
+
+      # Deployment Replicas
+      - record: cluster:deployment_replicas
+        expr: |
+          sum(kube_deployment_status_replicas)
+
+      # Ready Replicas
+      - record: cluster:deployment_ready_replicas
+        expr: |
+          sum(kube_deployment_status_replicas_available)
+
+  # Application Metrics
+  - name: application_recording_rules
+    interval: 30s
+    rules:
+      # Request Rate
+      - record: app:request_rate
+        expr: |
+          sum(rate(http_requests_total[5m])) by (service)
+
+      # Request Duration
+      - record: app:request_duration_seconds
+        expr: |
+          histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service))
+
+      # Request Errors
+      - record: app:request_errors
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m])) by (service)
+
+      # Request Success Rate
+      - record: app:request_success_rate
+        expr: |
+          100 - (sum(rate(http_requests_total{status=~"5.."}[5m])) by (service) / sum(rate(http_requests_total[5m])) by (service) * 100)
+
+  # Anomaly Detection Metrics
+  - name: anomaly_detection_rules
+    interval: 30s
+    rules:
+      # Z-Score for CPU
+      - record: anomaly:cpu_zscore
+        expr: |
+          (cluster:cpu_usage_percent - avg_over_time(cluster:cpu_usage_percent[1h])) / stddev_over_time(cluster:cpu_usage_percent[1h])
+
+      # Z-Score for Memory
+      - record: anomaly:memory_zscore
+        expr: |
+          (cluster:memory_usage_percent - avg_over_time(cluster:memory_usage_percent[1h])) / stddev_over_time(cluster:memory_usage_percent[1h])
+
+      # Z-Score for Request Rate
+      - record: anomaly:request_rate_zscore
+        expr: |
+          (app:request_rate - avg_over_time(app:request_rate[1h])) / stddev_over_time(app:request_rate[1h])
+
+      # Health Score
+      - record: cluster:health_score
+        expr: |
+          (100 - cluster:cpu_usage_percent) * 0.3 +
+          (100 - cluster:memory_usage_percent) * 0.3 +
+          (100 - cluster:disk_usage_percent) * 0.2 +
+          (100 - cluster:pod_failed * 10) * 0.2
+
+  # Capacity Planning Metrics
+  - name: capacity_planning_rules
+    interval: 30s
+    rules:
+      # CPU Forecast
+      - record: capacity:cpu_forecast_7d
+        expr: |
+          cluster:cpu_usage_percent + (avg_over_time(cluster:cpu_usage_percent[7d]) - cluster:cpu_usage_percent) * 7
+
+      # Memory Forecast
+      - record: capacity:memory_forecast_7d
+        expr: |
+          cluster:memory_usage_percent + (avg_over_time(cluster:memory_usage_percent[7d]) - cluster:memory_usage_percent) * 7
+
+      # Disk Forecast
+      - record: capacity:disk_forecast_7d
+        expr: |
+          cluster:disk_usage_percent + (avg_over_time(cluster:disk_usage_percent[7d]) - cluster:disk_usage_percent) * 7
+
+      # Pod Forecast
+      - record: capacity:pod_forecast_7d
+        expr: |
+          cluster:pod_count + (avg_over_time(cluster:pod_count[7d]) - cluster:pod_count) * 7

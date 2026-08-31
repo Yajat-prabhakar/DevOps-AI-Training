@@ -133,6 +133,128 @@ Complete DevOps training program covering infrastructure automation, CI/CD pipel
 - Performance monitoring and rollback
 - **Location:** `exercise-4.2/`
 
+## Phase 5: Capstone Project - AI-Powered DevOps Platform (Weeks 13-14)
+
+### Project: Enterprise DevOps Observability Platform
+
+**Scenario:** Build a comprehensive DevOps platform that integrates AI tools for intelligent infrastructure management, monitoring, and incident response.
+
+#### Week 13: Platform Development
+
+**1. Infrastructure Automation Layer**
+- Multi-cloud Terraform modules for Oracle Cloud deployment
+- Kubernetes clusters with automated scaling and management
+- CI/CD pipelines with intelligent testing and deployment strategies
+- Configuration management with drift detection and remediation
+- **Location:** `capstone/infrastructure/`
+
+**2. AI-Integrated Monitoring Stack**
+- Grafana ML with custom anomaly detection models
+- Prometheus with intelligent alerting and correlation
+- Distributed tracing with performance analysis
+- Log aggregation with pattern recognition and insights
+- **Location:** `capstone/monitoring/`
+
+#### Week 14: Advanced Features & Production Deployment
+
+**3. Intelligent Automation Features**
+- Self-healing infrastructure with ML-powered decisions
+- Automated incident response with context-aware escalation
+- Predictive capacity planning and cost optimization
+- Security monitoring with threat detection and response
+- **Location:** `capstone/automation/`
+
+**4. AI-Assisted Development Workflows**
+- Code generation and review automation
+- Infrastructure testing with intelligent test case generation
+- Documentation automation with continuous updates
+- Knowledge management with AI-powered search and recommendations
+- **Location:** `capstone/ai-development/`
+
+**5. Security & Compliance**
+- Comprehensive security monitoring with AI-powered threat detection
+- Compliance automation for SOC 2, ISO 27001, and cloud security frameworks
+- Automated vulnerability scanning and remediation
+- Identity and access management with behavioral analysis
+- **Location:** `capstone/security/`
+
+**6. Documentation & Knowledge Management**
+- AI-generated and maintained technical documentation
+- Interactive troubleshooting guides with contextual assistance
+- Automated runbook creation and updates
+- Team knowledge base with intelligent search and recommendations
+- **Location:** `capstone/docs/`
+
+#### Capstone Technical Specifications
+
+**Infrastructure Components:**
+- Multi-region Oracle Cloud deployment with 99.9% availability
+- Kubernetes clusters with 100+ microservices
+- CI/CD pipelines processing 500+ deployments per day
+- Monitoring stack handling 1M+ metrics per minute
+- Log processing capacity of 10GB+ per day
+
+**AI Integration Requirements:**
+- Grafana ML anomaly detection with <5% false positive rate
+- Automated incident response with 80% resolution without human intervention
+- Code generation accuracy >90% for common infrastructure patterns
+- Predictive capacity planning with 95% accuracy for 30-day forecasts
+- Security threat detection with <1 minute response time
+
+#### Capstone Deliverables
+
+1. **Complete Platform Implementation**
+   - Multi-cloud infrastructure with automated provisioning
+   - Comprehensive monitoring and observability stack
+   - AI-powered incident response and automation
+   - Self-service developer platform with AI assistance
+
+2. **Advanced AI Features**
+   - Custom ML models for infrastructure-specific anomaly detection
+   - Intelligent automation workflows with decision trees
+   - Predictive analytics for capacity and performance planning
+   - Natural language interface for infrastructure queries
+
+3. **Security & Compliance**
+   - Comprehensive security monitoring with AI-powered threat detection
+   - Compliance automation for SOC 2, ISO 27001, and cloud security frameworks
+   - Automated vulnerability scanning and remediation
+   - Identity and access management with behavioral analysis
+
+4. **Documentation & Knowledge Management**
+   - AI-generated and maintained technical documentation
+   - Interactive troubleshooting guides with contextual assistance
+   - Automated runbook creation and updates
+   - Team knowledge base with intelligent search and recommendations
+
+5. **Performance & Analytics**
+   - Real-time performance dashboards with ML insights
+   - Cost optimization recommendations and automated actions
+   - Resource utilization forecasting and planning
+   - Team productivity metrics and improvement suggestions
+
+#### Capstone Success Criteria
+
+**Technical Performance:**
+- System availability >99.9% with automated recovery
+- Incident detection and response time <5 minutes
+- Infrastructure provisioning time reduced by 80%
+- Deployment success rate >98% with automated rollback
+
+**AI Integration Effectiveness:**
+- Code generation accuracy >90% for infrastructure patterns
+- Anomaly detection with <5% false positive rate
+- Automated incident resolution rate >80%
+- Documentation maintenance automation >95%
+
+**Business Impact:**
+- Developer productivity improvement >50%
+- Infrastructure costs reduced by 30% through optimization
+- Time to resolution for incidents reduced by 70%
+- Team onboarding time reduced by 60%
+
+**Location:** `capstone/`
+
 ## Repository Structure
 
 ```
@@ -156,7 +278,14 @@ DevOps-AI-Training/
 ├── exercise-3.2/          # Performance intelligence
 ├── exercise-3.3/          # Infrastructure health prediction
 ├── exercise-4.1/          # Incident response automation
-└── exercise-4.2/          # Intelligent deployment pipeline
+├── exercise-4.2/          # Intelligent deployment pipeline
+└── capstone/              # Capstone project: Enterprise DevOps Platform
+    ├── infrastructure/    # Oracle Cloud Terraform, K8s, CI/CD
+    ├── monitoring/        # Prometheus, Grafana, Loki
+    ├── automation/        # Self-healing, Incident Response, Capacity Planning
+    ├── ai-development/    # Code generation, Test generation
+    ├── security/          # Policies, Compliance scanning
+    └── docs/              # Documentation
 ```
 
 ## CI/CD Pipeline Status

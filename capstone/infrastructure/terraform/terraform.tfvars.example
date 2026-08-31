@@ -1,0 +1,16 @@
+# Example Terraform Variables
+# Copy this file to terraform.tfvars and fill in your values
+
+region           = "ap-mumbai-1"
+tenancy_ocid     = "ocid1.tenancy.oc1..aaaaaaaa1234567890abcdefghijklmnopqrstuvwxyz"
+user_ocid        = "ocid1.user.oc1..aaaaaaaa1234567890abcdefghijklmnopqrstuvwxyz"
+fingerprint      = "aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99"
+private_key_path = "~/.oci/oci_api_key.pem"
+project_name     = "devops-platform"
+alarm_email      = "alerts@yourdomain.com"
+node_count       = 3
+node_shape       = "VM.Standard.E4.Flex"
+node_ocpus       = 4
+node_memory_gb   = 16
+kubernetes_version = "v1.28.3"
+vcn_cidr         = "10.0.0.0/16"

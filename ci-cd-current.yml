@@ -1,0 +1,474 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      skip_tests:
+        description: 'Skip test suite'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY_BACKEND: app-backend
+  ECR_REPOSITORY_FRONTEND: app-frontend
+  ECS_CLUSTER_STAGING: staging-cluster
+  ECS_CLUSTER_PRODUCTION: production-cluster
+  TERRAFORM_VERSION: "1.9.0"
+
+permissions:
+  id-token: write
+  contents: read
+  packages: write
+
+jobs:
+  # ============================================================
+  # Stage 1: Code Quality & Security Scanning
+  # ============================================================
+  lint-and-scan:
+    name: Code Quality & Security
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner (filesystem)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Lint Dockerfiles
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: "*/Dockerfile"
+          failure-threshold: warning
+
+      - name: Validate YAML
+        run: |
+          pip install yamllint
+          yamllint -d relaxed .github/workflows/
+
+  # ============================================================
+  # Stage 2: Backend Tests
+  # ============================================================
+  test-backend:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: testdb
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          pip install pytest pytest-cov flake8 bandit
+
+      - name: Run linting
+        run: |
+          cd backend
+          flake8 . --max-line-length=120 --ignore=E501,W503
+
+      - name: Run security scan
+        run: |
+          cd backend
+          bandit -r . -f json -o bandit-results.json || true
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
+        run: |
+          cd backend
+          pytest --cov=. --cov-report=xml --cov-report=term -v
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./backend/coverage.xml
+          flags: backend
+
+  # ============================================================
+  # Stage 3: Frontend Tests
+  # ============================================================
+  test-frontend:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Run linting
+        run: |
+          cd frontend
+          npm run lint
+
+      - name: Run type check
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Run tests
+        run: |
+          cd frontend
+          npm test -- --coverage --watchAll=false
+
+  # ============================================================
+  # Stage 4: Build & Push Docker Images
+  # ============================================================
+  build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [lint-and-scan, test-backend, test-frontend]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    outputs:
+      backend-image: ${{ steps.build-backend.outputs.image }}
+      frontend-image: ${{ steps.build-frontend.outputs.image }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push backend image
+        id: build-backend
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          cd backend
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:latest .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:latest
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Build and push frontend image
+        id: build-frontend
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          cd frontend
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:latest .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:latest
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Scan backend image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ steps.build-backend.outputs.image }}
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+
+      - name: Scan frontend image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ steps.build-frontend.outputs.image }}
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+
+  # ============================================================
+  # Stage 5: Infrastructure Validation
+  # ============================================================
+  terraform-validate:
+    name: Terraform Validation
+    runs-on: ubuntu-latest
+    needs: [lint-and-scan]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform Format Check
+        run: |
+          cd exercise-1.2
+          terraform fmt -check -recursive
+
+      - name: Terraform Init (staging)
+        run: |
+          cd exercise-1.2
+          terraform init -backend-config="key=staging/terraform.tfstate"
+
+      - name: Terraform Validate (staging)
+        run: |
+          cd exercise-1.2
+          terraform validate
+
+      - name: Terraform Plan (staging)
+        run: |
+          cd exercise-1.2
+          terraform plan \
+            -var-file=environments/us-east-1/staging.tfvars \
+            -out=tfplan-staging \
+            -no-color
+        continue-on-error: true
+
+      - name: Upload Terraform Plan
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tfplan-staging
+          path: exercise-1.2/tfplan-staging
+
+  # ============================================================
+  # Stage 6: Deploy to Staging
+  # ============================================================
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build, terraform-validate]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    environment:
+      name: staging
+      url: https://staging.example.com
+    concurrency:
+      group: staging-deploy
+      cancel-in-progress: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy Infrastructure
+        run: |
+          cd exercise-1.2
+          terraform init -backend-config="key=staging/terraform.tfstate"
+          terraform apply \
+            -var-file=environments/us-east-1/staging.tfvars \
+            -auto-approve
+
+      - name: Deploy Backend to ECS
+        run: |
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER_STAGING \
+            --service backend-service \
+            --force-new-deployment
+
+      - name: Deploy Frontend to ECS
+        run: |
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER_STAGING \
+            --service frontend-service \
+            --force-new-deployment
+
+      - name: Wait for deployment stability
+        run: |
+          aws ecs wait services-stable \
+            --cluster $ECS_CLUSTER_STAGING \
+            --services backend-service frontend-service
+
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests against staging..."
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://staging.example.com/api/health)
+          if [ "$RESPONSE" != "200" ]; then
+            echo "Health check failed with status: $RESPONSE"
+            exit 1
+          fi
+          echo "Smoke tests passed"
+
+  # ============================================================
+  # Stage 7: Integration Tests (Staging)
+  # ============================================================
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    environment:
+      name: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run API integration tests
+        run: |
+          cd backend
+          pip install requests pytest
+          pytest integration/ -v --tb=short
+
+  # ============================================================
+  # Stage 8: Deploy to Production (Manual Approval)
+  # ============================================================
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [integration-tests]
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://example.com
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy Infrastructure (Primary Region)
+        run: |
+          cd exercise-1.2
+          terraform init -backend-config="key=production/terraform.tfstate"
+          terraform apply \
+            -var-file=environments/us-east-1/prod.tfvars \
+            -auto-approve
+
+      - name: Deploy to ECS (Primary)
+        run: |
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER_PRODUCTION \
+            --service backend-service \
+            --force-new-deployment
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER_PRODUCTION \
+            --service frontend-service \
+            --force-new-deployment
+
+      - name: Wait for deployment stability
+        run: |
+          aws ecs wait services-stable \
+            --cluster $ECS_CLUSTER_PRODUCTION \
+            --services backend-service frontend-service
+
+      - name: Run production smoke tests
+        run: |
+          echo "Running smoke tests against production..."
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://example.com/api/health)
+          if [ "$RESPONSE" != "200" ]; then
+            echo "CRITICAL: Production health check failed with status: $RESPONSE"
+            exit 1
+          fi
+          echo "Production smoke tests passed"
+
+      - name: Notify deployment
+        if: success()
+        run: |
+          echo "Successfully deployed to production"
+          echo "Commit: ${{ github.sha }}"
+          echo "Deployed by: ${{ github.actor }}"
+
+  # ============================================================
+  # Rollback Job (Manual Trigger)
+  # ============================================================
+  rollback:
+    name: Rollback Production
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'
+    environment:
+      name: production
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Rollback ECS services
+        run: |
+          echo "Rolling back ECS services to previous task definition..."
+          
+          # Get previous task definition for backend
+          PREV_BACKEND=$(aws ecs describe-services \
+            --cluster $ECS_CLUSTER_PRODUCTION \
+            --services backend-service \
+            --query 'services[0].deployments[?status==`ACTIVE`].taskDefinition' \
+            --output text | awk '{print $2}')
+          
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER_PRODUCTION \
+            --service backend-service \
+            --task-definition $PREV_BACKEND \
+            --force-new-deployment
+          
+          echo "Rollback initiated for backend: $PREV_BACKEND"
+
+      - name: Notify rollback
+        run: |
+          echo "Rollback initiated by ${{ github.actor }}"
+          echo "Time: $(date -u +%Y-%m-%dT%H:%M:%SZ)"

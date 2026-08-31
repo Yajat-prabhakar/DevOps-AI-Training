@@ -1,0 +1,249 @@
+# Alerting Rules - Capstone Project
+# Enterprise DevOps Observability Platform
+
+groups:
+  # Infrastructure Alerts
+  - name: infrastructure_alerts
+    rules:
+      # High CPU Usage
+      - alert: HighCPUUsage
+        expr: cluster:cpu_usage_percent > 90
+        for: 5m
+        labels:
+          severity: critical
+          team: infrastructure
+        annotations:
+          summary: "High CPU Usage"
+          description: "CPU usage is above 90% for 5 minutes"
+
+      # High Memory Usage
+      - alert: HighMemoryUsage
+        expr: cluster:memory_usage_percent > 85
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "High Memory Usage"
+          description: "Memory usage is above 85% for 5 minutes"
+
+      # High Disk Usage
+      - alert: HighDiskUsage
+        expr: cluster:disk_usage_percent > 80
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "High Disk Usage"
+          description: "Disk usage is above 80% for 5 minutes"
+
+      # Disk Space Critical
+      - alert: DiskSpaceCritical
+        expr: cluster:disk_usage_percent > 95
+        for: 5m
+        labels:
+          severity: critical
+          team: infrastructure
+        annotations:
+          summary: "Disk Space Critical"
+          description: "Disk usage is above 95%"
+
+      # Network Errors
+      - alert: NetworkErrors
+        expr: rate(node_network_receive_errs_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "Network Errors Detected"
+          description: "Network errors detected on interface"
+
+  # Kubernetes Alerts
+  - name: kubernetes_alerts
+    rules:
+      # Pod Crash Looping
+      - alert: PodCrashLooping
+        expr: kube_pod_container_status_restarts_total > 5
+        for: 5m
+        labels:
+          severity: critical
+          team: kubernetes
+        annotations:
+          summary: "Pod Crash Looping"
+          description: "Pod {{ $labels.pod }} is crash looping"
+
+      # Pod Not Ready
+      - alert: PodNotReady
+        expr: kube_pod_status_ready{condition="false"} == 1
+        for: 10m
+        labels:
+          severity: warning
+          team: kubernetes
+        annotations:
+          summary: "Pod Not Ready"
+          description: "Pod {{ $labels.pod }} is not ready"
+
+      # Pod Pending
+      - alert: PodPending
+        expr: kube_pod_status_phase{phase="Pending"} == 1
+        for: 15m
+        labels:
+          severity: warning
+          team: kubernetes
+        annotations:
+          summary: "Pod Pending"
+          description: "Pod {{ $labels.pod }} is pending for more than 15 minutes"
+
+      # Deployment Replicas Mismatch
+      - alert: DeploymentReplicasMismatch
+        expr: kube_deployment_spec_replicas != kube_deployment_status_replicas
+        for: 10m
+        labels:
+          severity: warning
+          team: kubernetes
+        annotations:
+          summary: "Deployment Replicas Mismatch"
+          description: "Deployment {{ $labels.deployment }} has mismatched replicas"
+
+      # Deployment Not Available
+      - alert: DeploymentNotAvailable
+        expr: kube_deployment_status_replicas_available == 0
+        for: 5m
+        labels:
+          severity: critical
+          team: kubernetes
+        annotations:
+          summary: "Deployment Not Available"
+          description: "Deployment {{ $labels.deployment }} has no available replicas"
+
+      # Node Not Ready
+      - alert: NodeNotReady
+        expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          team: kubernetes
+        annotations:
+          summary: "Node Not Ready"
+          description: "Node {{ $labels.node }} is not ready"
+
+  # Application Alerts
+  - name: application_alerts
+    rules:
+      # High Error Rate
+      - alert: HighErrorRate
+        expr: app:request_errors > 5
+        for: 5m
+        labels:
+          severity: critical
+          team: application
+        annotations:
+          summary: "High Error Rate"
+          description: "Error rate is above 5% for 5 minutes"
+
+      # High Latency
+      - alert: HighLatency
+        expr: app:request_duration_seconds > 1
+        for: 5m
+        labels:
+          severity: warning
+          team: application
+        annotations:
+          summary: "High Latency"
+          description: "P99 latency is above 1 second"
+
+      # Low Success Rate
+      - alert: LowSuccessRate
+        expr: app:request_success_rate < 99
+        for: 5m
+        labels:
+          severity: warning
+          team: application
+        annotations:
+          summary: "Low Success Rate"
+          description: "Success rate is below 99%"
+
+  # Anomaly Detection Alerts
+  - name: anomaly_detection_alerts
+    rules:
+      # CPU Anomaly
+      - alert: CPUAnomaly
+        expr: abs(anomaly:cpu_zscore) > 3
+        for: 5m
+        labels:
+          severity: warning
+          team: ai-operations
+        annotations:
+          summary: "CPU Anomaly Detected"
+          description: "CPU usage anomaly detected (Z-score: {{ $value }})"
+
+      # Memory Anomaly
+      - alert: MemoryAnomaly
+        expr: abs(anomaly:memory_zscore) > 3
+        for: 5m
+        labels:
+          severity: warning
+          team: ai-operations
+        annotations:
+          summary: "Memory Anomaly Detected"
+          description: "Memory usage anomaly detected (Z-score: {{ $value }})"
+
+      # Request Rate Anomaly
+      - alert: RequestRateAnomaly
+        expr: abs(anomaly:request_rate_zscore) > 3
+        for: 5m
+        labels:
+          severity: warning
+          team: ai-operations
+        annotations:
+          summary: "Request Rate Anomaly Detected"
+          description: "Request rate anomaly detected (Z-score: {{ $value }})"
+
+      # Health Score Critical
+      - alert: HealthScoreCritical
+        expr: cluster:health_score < 50
+        for: 5m
+        labels:
+          severity: critical
+          team: ai-operations
+        annotations:
+          summary: "Health Score Critical"
+          description: "Cluster health score is below 50"
+
+  # Capacity Planning Alerts
+  - name: capacity_planning_alerts
+    rules:
+      # CPU Forecast High
+      - alert: CPUForecastHigh
+        expr: capacity:cpu_forecast_7d > 90
+        for: 5m
+        labels:
+          severity: warning
+          team: capacity-planning
+        annotations:
+          summary: "CPU Forecast High"
+          description: "CPU usage forecasted to exceed 90% in 7 days"
+
+      # Memory Forecast High
+      - alert: MemoryForecastHigh
+        expr: capacity:memory_forecast_7d > 85
+        for: 5m
+        labels:
+          severity: warning
+          team: capacity-planning
+        annotations:
+          summary: "Memory Forecast High"
+          description: "Memory usage forecasted to exceed 85% in 7 days"
+
+      # Disk Forecast High
+      - alert: DiskForecastHigh
+        expr: capacity:disk_forecast_7d > 80
+        for: 5m
+        labels:
+          severity: warning
+          team: capacity-planning
+        annotations:
+          summary: "Disk Forecast High"
+          description: "Disk usage forecasted to exceed 80% in 7 days"
